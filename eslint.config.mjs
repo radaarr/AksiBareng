@@ -1,7 +1,7 @@
 import { FlatCompat } from '@eslint/eslintrc'
 
 const ignores = {
-  ignores: ['.next/', 'node_modules/', 'coverage/', 'playwright-report/', 'test-results/', 'contracts/artifacts/']
+  ignores: ['.next/', 'node_modules/', 'coverage/', 'playwright-report/', 'test-results/', 'contracts/artifacts/', 'next-env.d.ts']
 }
 
 const compat = new FlatCompat({
