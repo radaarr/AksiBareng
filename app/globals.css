@@ -1,0 +1,7 @@
+@import 'tailwindcss'
+
+/*
+  Token semantik status mengikuti docs/UI_UX.md §3:
+  positif (hijau), peringatan (amber), negatif (merah), netral (zinc).
+  Kontras teks minimal 4.5:1 — jangan warna tanpa ikon/teks.
+*/
