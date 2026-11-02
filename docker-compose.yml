@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: aksibareng-db
+    environment:
+      POSTGRES_USER: aksibareng
+      POSTGRES_PASSWORD: aksibareng
+      POSTGRES_DB: aksibareng
+    ports:
+      - "5432:5432"
+    volumes:
+      - aksibareng-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aksibareng -d aksibareng"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  aksibareng-db:
