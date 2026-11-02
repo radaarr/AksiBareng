@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+build/
+dist/
+.vercel/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.keystore
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# Smart contract artifacts
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+contracts/coverage/
+coverage/
+
+# Test & reports
+playwright-report/
+test-results/
+*.lcov
+
+# Logs & OS
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/*
+!.vscode/extensions.json
