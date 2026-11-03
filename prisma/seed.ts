@@ -1,5 +1,4 @@
-// hash() default @node-rs/argon2 adalah Argon2id (docs/DATABASE.md §3: Argon2id).
-import { hash } from '@node-rs/argon2'
+import { hashPassword } from '../lib/auth/password'
 import {
   AidType,
   CategoryScope,
@@ -65,11 +64,8 @@ const extraVolunteers = [
 ]
 
 async function main() {
-  const demoPasswordHash = await hash(DEMO_PASSWORD, {
-    memoryCost: 19456,
-    timeCost: 2,
-    parallelism: 1
-  })
+  // Satu sumber parameter Argon2id dengan aplikasi (docs/PRIVACY_SECURITY.md §4).
+  const demoPasswordHash = await hashPassword(DEMO_PASSWORD)
 
   // ── Users (4 akun demo + 11 relawan tambahan agar kuota 12/20 terlihat nyata) ──
   const admin = await prisma.user.upsert({
@@ -118,11 +114,7 @@ async function main() {
   const volunteers = [rani]
   for (const person of extraVolunteers) {
     // Akun pengisi kuota: kata sandi acak agar tidak ada yang bisa login tanpa sepengetahuan presenter.
-    const unusableHash = await hash(crypto.randomUUID(), {
-      memoryCost: 19456,
-      timeCost: 2,
-      parallelism: 1
-    })
+    const unusableHash = await hashPassword(crypto.randomUUID())
     volunteers.push(
       await prisma.user.upsert({
         where: { email: person.email },
