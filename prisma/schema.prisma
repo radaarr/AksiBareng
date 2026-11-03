@@ -1,0 +1,840 @@
+// Sumber skema — melayani docs/DATABASE.md (bila beda, perbaiki dokumen dulu: AGENTS.md).
+// Konvensi §1: UUID PK, snake_case plural via @@map, timestamptz UTC,
+// nominal token Decimal(78,0) (wei, tanpa float), nominal fiat Decimal(18,2) + mata uang.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────── Enum (§7) ───────────────────────────
+
+enum UserRole {
+  VOLUNTEER
+  ORGANIZER
+  ADMIN
+
+  @@map("user_role")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+
+  @@map("user_status")
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+
+  @@map("verification_status")
+}
+
+enum WalletLinkStatus {
+  PENDING
+  VERIFIED
+  REVOKED
+
+  @@map("wallet_link_status")
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  ONGOING
+  COMPLETED
+  CANCELLED
+
+  @@map("event_status")
+}
+
+enum RegistrationStatus {
+  REGISTERED
+  CANCELLED
+  CHECKED_IN
+  VERIFIED
+  NO_SHOW
+  REJECTED
+
+  @@map("registration_status")
+}
+
+enum AttendanceSessionStatus {
+  OPEN
+  CLOSED
+
+  @@map("attendance_session_status")
+}
+
+enum CheckInMethod {
+  QR
+  MANUAL
+
+  @@map("check_in_method")
+}
+
+enum ContributionStatus {
+  PENDING
+  VERIFIED
+  REVOKED
+
+  @@map("contribution_status")
+}
+
+enum CampaignStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  PAUSED
+  CLOSED
+  COMPLETED
+  REJECTED
+  CANCELLED
+
+  @@map("campaign_status")
+}
+
+enum FundingAsset {
+  NATIVE_ETH_TESTNET
+
+  @@map("funding_asset")
+}
+
+enum DonationStatus {
+  INTENT
+  PENDING
+  CONFIRMED
+  FAILED
+
+  @@map("donation_status")
+}
+
+enum GoodsDonationStatus {
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+  RECEIVED
+  CANCELLED
+
+  @@map("goods_donation_status")
+}
+
+enum GoodsCondition {
+  NEW
+  LIKE_NEW
+  USED_GOOD
+
+  @@map("goods_condition")
+}
+
+enum HandoverMethod {
+  DROP_OFF
+  PICKUP_BY_ORGANIZER
+  COURIER
+
+  @@map("handover_method")
+}
+
+enum ExpenseStatus {
+  PROPOSED
+  APPROVED
+  REJECTED
+  PAID
+
+  @@map("expense_status")
+}
+
+enum DistributionStatus {
+  PLANNED
+  PREPARED
+  DISPATCHED
+  DELIVERED
+  VERIFIED
+  PARTIALLY_DELIVERED
+  CANCELLED
+  NEEDS_REVIEW
+
+  @@map("distribution_status")
+}
+
+enum AidType {
+  GOODS
+  FUNDS
+
+  @@map("aid_type")
+}
+
+enum PrivacyReview {
+  PENDING
+  APPROVED
+  REDACTED
+  REJECTED
+
+  @@map("privacy_review")
+}
+
+enum TxKind {
+  DONATION
+  ISSUE_CONTRIBUTION
+  REVOKE_CONTRIBUTION
+  RECORD_EXPENSE_PROOF
+  RECORD_DISTRIBUTION
+  CREATE_CAMPAIGN
+  CLOSE_CAMPAIGN
+
+  @@map("tx_kind")
+}
+
+enum TxStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  RETRY_REQUIRED
+
+  @@map("tx_status")
+}
+
+enum AnchorStatus {
+  NOT_ANCHORED
+  PENDING
+  CONFIRMED
+  FAILED
+  RETRY_REQUIRED
+
+  @@map("anchor_status")
+}
+
+enum CategoryScope {
+  EVENT
+  CAMPAIGN
+  EXPENSE
+
+  @@map("category_scope")
+}
+
+enum AbuseTargetType {
+  CAMPAIGN
+  EVENT
+
+  @@map("abuse_target_type")
+}
+
+enum AbuseReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+
+  @@map("abuse_report_status")
+}
+
+// ─────────────────────── §3 Identitas & akses ───────────────────────
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique // disimpan lowercase (aturan aplikasi); unik case-insensitive — lihat TODO DATABASE.md
+  passwordHash String
+  displayName  String
+  role         UserRole   @default(VOLUNTEER) // satu akun satu role utama, PRD §4.2
+  isPublicName Boolean    @default(true) // false → tampil "Donatur anonim"
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?  @db.Timestamptz(3)
+  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
+
+  walletLinks                       WalletLink[]
+  organizationsOwned                Organization[]           @relation("OrgOwner")
+  orgVerificationsSubmitted         OrganizationVerification[] @relation("OrgVerificationSubmitted")
+  orgVerificationsReviewed          OrganizationVerification[] @relation("OrgVerificationReviewed")
+  eventsCreated                     Event[]                  @relation("EventCreatedBy")
+  eventRegistrations                EventRegistration[]
+  taskAssignmentsAssigned           TaskAssignment[]         @relation("TaskAssignmentAssignedBy")
+  attendanceSessionsOpened          AttendanceSession[]      @relation("AttendanceSessionOpenedBy")
+  attendanceRecordsCheckedIn        AttendanceRecord[]       @relation("AttendanceRecordCheckedInBy")
+  contributions                     Contribution[]           @relation("ContributionUser")
+  contributionsValidated            Contribution[]           @relation("ContributionValidatedBy")
+  contributionsRevoked              Contribution[]           @relation("ContributionRevokedBy")
+  campaignsReviewed                 Campaign[]               @relation("CampaignReviewedBy")
+  campaignBudgetsCreated            CampaignBudget[]         @relation("CampaignBudgetCreatedBy")
+  donations                         Donation[]               @relation("DonationDonor")
+  goodsDonations                    GoodsDonation[]          @relation("GoodsDonationDonor")
+  goodsDonationsReceived            GoodsDonation[]          @relation("GoodsDonationReceivedBy")
+  expensesCreated                   Expense[]                @relation("ExpenseCreatedBy")
+  expensesReviewed                  Expense[]                @relation("ExpenseReviewedBy")
+  expenseEvidenceUploaded           ExpenseEvidence[]        @relation("ExpenseEvidenceUploadedBy")
+  distributionsInCharge             DistributionBatch[]      @relation("DistributionPersonInCharge")
+  distributionsVerified             DistributionBatch[]      @relation("DistributionVerifiedBy")
+  distributionEvidenceCaptured      DistributionEvidence[]   @relation("DistributionEvidenceCapturedBy")
+  auditLogs                         AuditLog[]               @relation("AuditLogActor")
+  blockchainTxSubmitted             BlockchainTransaction[]  @relation("BlockchainTxSubmittedBy")
+  platformSettingsUpdated           PlatformSetting[]        @relation("PlatformSettingUpdatedBy")
+  abuseReportsReported              AbuseReport[]            @relation("AbuseReportReportedBy")
+  abuseReportsHandled               AbuseReport[]            @relation("AbuseReportHandledBy")
+
+  @@map("users")
+}
+
+model WalletLink {
+  id         String           @id @default(uuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id])
+  address    String           // hex 20 byte, lowercase (CHECK address = lower(address) di migrasi)
+  chainId    Int
+  status     WalletLinkStatus @default(PENDING)
+  nonce      String
+  message    String?
+  signature  String?
+  verifiedAt DateTime?        @db.Timestamptz(3)
+  createdAt  DateTime         @default(now()) @db.Timestamptz(3)
+
+  @@unique([address, chainId]) // UNIQUE(lower(address), chain_id) — lowercase dijaga CHECK + aplikasi
+  @@index([userId])
+  @@map("wallet_links")
+}
+
+model Organization {
+  id                 String             @id @default(uuid())
+  ownerId            String
+  owner              User               @relation("OrgOwner", fields: [ownerId], references: [id])
+  name               String
+  slug               String             @unique
+  description        String?
+  categoryId         String
+  category           Category           @relation(fields: [categoryId], references: [id])
+  contactEmail       String
+  publicArea         String // kota/kabupaten/provinsi — bukan alamat rumah
+  logoUrl            String?
+  website            String?
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(3)
+
+  verifications           OrganizationVerification[]
+  events                  Event[]
+  campaigns               Campaign[]
+
+  @@index([ownerId])
+  @@map("organizations")
+}
+
+// Rekaman lama tidak ditimpa; pengajuan ulang membuat baris baru.
+model OrganizationVerification {
+  id                String             @id @default(uuid())
+  organizationId    String
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  submittedBy       String
+  submitter         User               @relation("OrgVerificationSubmitted", fields: [submittedBy], references: [id])
+  documentStorageKey String
+  documentSha256    String
+  documentSalt      String
+  status            VerificationStatus @default(PENDING)
+  reviewerId        String?
+  reviewer          User?              @relation("OrgVerificationReviewed", fields: [reviewerId], references: [id])
+  reviewNote        String?
+  submittedAt       DateTime           @default(now()) @db.Timestamptz(3)
+  reviewedAt        DateTime?          @db.Timestamptz(3)
+
+  @@index([organizationId, submittedAt(sort: Desc)])
+  @@map("organization_verifications")
+}
+
+// ───────────────────── §4 Kegiatan & relawan ─────────────────────
+
+model Event {
+  id                     String      @id @default(uuid())
+  organizationId         String
+  organization           Organization @relation(fields: [organizationId], references: [id])
+  title                  String
+  slug                   String      @unique
+  description            String?
+  categoryId             String
+  category               Category    @relation("EventCategory", fields: [categoryId], references: [id])
+  locationName           String?
+  publicAddress          String? // lokasi umum kegiatan, bukan alamat rumah
+  city                   String?
+  startsAt               DateTime    @db.Timestamptz(3)
+  endsAt                 DateTime    @db.Timestamptz(3)
+  quota                  Int // CHECK quota BETWEEN 1 AND 5000 di migrasi
+  registrationOpensAt    DateTime    @db.Timestamptz(3)
+  registrationClosesAt   DateTime    @db.Timestamptz(3)
+  cancellationDeadline   DateTime?   @db.Timestamptz(3)
+  status                 EventStatus @default(DRAFT)
+  cancelReason           String?
+  createdBy              String
+  creator                User        @relation("EventCreatedBy", fields: [createdBy], references: [id])
+  createdAt              DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime    @updatedAt @db.Timestamptz(3)
+
+  registrations      EventRegistration[]
+  tasks              EventTask[]
+  attendanceSessions AttendanceSession[]
+  contributions      Contribution[]
+
+  @@index([organizationId, startsAt])
+  @@map("events")
+}
+
+model EventRegistration {
+  id           String             @id @default(uuid())
+  eventId      String
+  event        Event              @relation(fields: [eventId], references: [id])
+  userId       String
+  user         User               @relation(fields: [userId], references: [id])
+  status       RegistrationStatus @default(REGISTERED)
+  registeredAt DateTime           @default(now()) @db.Timestamptz(3)
+  cancelledAt  DateTime?          @db.Timestamptz(3)
+  cancelReason String?
+
+  taskAssignment TaskAssignment?
+  attendanceRecords AttendanceRecord[]
+  contribution      Contribution?
+
+  @@unique([eventId, userId])
+  @@index([userId])
+  @@map("event_registrations")
+}
+
+model EventTask {
+  id          String   @id @default(uuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id])
+  name        String
+  description String?
+  quota       Int // > 0, CHECK di migrasi
+  sortOrder   Int      @default(0)
+
+  assignments TaskAssignment[]
+
+  @@index([eventId, sortOrder])
+  @@map("event_tasks")
+}
+
+// UNIQUE(registration_id): satu relawan satu penempatan aktif; riwayat lewat audit_logs.
+model TaskAssignment {
+  id             String   @id @default(uuid())
+  taskId         String
+  task           EventTask @relation(fields: [taskId], references: [id])
+  registrationId String   @unique
+  registration   EventRegistration @relation(fields: [registrationId], references: [id])
+  assignedBy     String
+  assigner       User     @relation("TaskAssignmentAssignedBy", fields: [assignedBy], references: [id])
+  assignedAt     DateTime @default(now()) @db.Timestamptz(3)
+  notes          String?
+
+  @@index([taskId])
+  @@map("task_assignments")
+}
+
+// Satu sesi OPEN per event — partial unique index di migrasi.
+model AttendanceSession {
+  id       String                 @id @default(uuid())
+  eventId  String
+  event    Event                  @relation(fields: [eventId], references: [id])
+  openedBy String
+  opener   User                   @relation("AttendanceSessionOpenedBy", fields: [openedBy], references: [id])
+  opensAt  DateTime               @db.Timestamptz(3)
+  closesAt DateTime               @db.Timestamptz(3)
+  status   AttendanceSessionStatus @default(OPEN)
+  createdAt DateTime              @default(now()) @db.Timestamptz(3)
+
+  records AttendanceRecord[]
+
+  @@index([eventId, opensAt])
+  @@map("attendance_sessions")
+}
+
+// Token QR: base64url(payload) + "." + HMAC(payload, QR_TOKEN_SECRET) — tidak disimpan; token_nonce menandai pemakaian.
+model AttendanceRecord {
+  id             String        @id @default(uuid())
+  sessionId      String
+  session        AttendanceSession @relation(fields: [sessionId], references: [id])
+  registrationId String
+  registration   EventRegistration @relation(fields: [registrationId], references: [id])
+  tokenNonce     String        @unique
+  checkedInAt    DateTime      @default(now()) @db.Timestamptz(3)
+  checkedInBy    String
+  checker        User          @relation("AttendanceRecordCheckedInBy", fields: [checkedInBy], references: [id])
+  method         CheckInMethod
+
+  @@unique([sessionId, registrationId])
+  @@map("attendance_records")
+}
+
+// Hanya dibuat bila registrasi CHECKED_IN; check-in tidak otomatis terverifikasi (ATT-06).
+model Contribution {
+  id             String             @id @default(uuid())
+  eventId        String
+  event          Event              @relation(fields: [eventId], references: [id])
+  registrationId String             @unique
+  registration   EventRegistration  @relation(fields: [registrationId], references: [id])
+  userId         String
+  user           User               @relation("ContributionUser", fields: [userId], references: [id])
+  status         ContributionStatus @default(PENDING)
+  validatedBy    String?
+  validator      User?              @relation("ContributionValidatedBy", fields: [validatedBy], references: [id])
+  validatedAt    DateTime?          @db.Timestamptz(3)
+  revokedBy      String?
+  revoker        User?              @relation("ContributionRevokedBy", fields: [revokedBy], references: [id])
+  revokeReason   String?
+  blockchainTxId String?
+  blockchainTx   BlockchainTransaction? @relation(fields: [blockchainTxId], references: [id])
+  createdAt      DateTime           @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([eventId])
+  @@map("contributions")
+}
+
+// ───────────────────── §5 Kampanye & donasi ─────────────────────
+
+model Campaign {
+  id                    String         @id @default(uuid())
+  organizationId        String
+  organization          Organization   @relation(fields: [organizationId], references: [id])
+  title                 String
+  slug                  String         @unique
+  story                 String
+  categoryId            String
+  category              Category       @relation("CampaignCategory", fields: [categoryId], references: [id])
+  periodStartsAt        DateTime       @db.Timestamptz(3)
+  periodEndsAt          DateTime       @db.Timestamptz(3)
+  targetAmountWei       Decimal        @db.Decimal(78, 0)
+  targetAmountIdrLabel  Decimal?       @db.Decimal(18, 2) // label ilustratif, tidak dipakai perhitungan
+  fundingAsset          FundingAsset   @default(NATIVE_ETH_TESTNET)
+  generalLocation       String? // kota/kabupaten, tanpa alamat penerima
+  status                CampaignStatus @default(DRAFT)
+  reviewedBy            String?
+  reviewer              User?          @relation("CampaignReviewedBy", fields: [reviewedBy], references: [id])
+  reviewedAt            DateTime?      @db.Timestamptz(3)
+  reviewNote            String?
+  onChainCampaignId     Int?
+  closedReason          String?
+  finalReportStorageKey String?
+  createdAt             DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime       @updatedAt @db.Timestamptz(3)
+
+  budgets             CampaignBudget[]
+  donations           Donation[]
+  goodsDonations      GoodsDonation[]
+  inventoryItems      InventoryItem[]
+  expenses            Expense[]
+  distributionBatches DistributionBatch[]
+
+  @@index([organizationId, status])
+  @@map("campaigns")
+}
+
+// Revisi anggaran membuat versi baru; versi lama diberi superseded_at dan tetap ada.
+model CampaignBudget {
+  id                String    @id @default(uuid())
+  campaignId        String
+  campaign          Campaign  @relation(fields: [campaignId], references: [id])
+  version           Int
+  category          String
+  description       String?
+  plannedAmountWei  Decimal   @db.Decimal(78, 0)
+  createdBy         String
+  creator           User      @relation("CampaignBudgetCreatedBy", fields: [createdBy], references: [id])
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  supersededAt      DateTime? @db.Timestamptz(3)
+
+  @@unique([campaignId, version])
+  @@map("campaign_budgets")
+}
+
+model Donation {
+  id                   String         @id @default(uuid())
+  campaignId           String
+  campaign             Campaign       @relation(fields: [campaignId], references: [id])
+  donorUserId          String? // donasi bisa dari akun terhubung wallet tanpa profil lengkap
+  donor                User?          @relation("DonationDonor", fields: [donorUserId], references: [id])
+  donorDisplayName     String?
+  isAnonymous          Boolean        @default(false)
+  amountWei            Decimal        @db.Decimal(78, 0)
+  chainId              Int
+  txHash               String?
+  status               DonationStatus @default(INTENT)
+  donationIntentNonce  String         @unique
+  confirmedAt          DateTime?      @db.Timestamptz(3)
+  createdAt            DateTime       @default(now()) @db.Timestamptz(3)
+
+  @@index([campaignId, status])
+  @@map("donations")
+}
+
+model GoodsDonation {
+  id                String              @id @default(uuid())
+  campaignId        String
+  campaign          Campaign            @relation(fields: [campaignId], references: [id])
+  donorUserId       String?
+  donor             User?               @relation("GoodsDonationDonor", fields: [donorUserId], references: [id])
+  donorDisplayName  String?
+  itemName          String
+  category          String
+  quantity          Int // > 0, CHECK di migrasi
+  unit              String
+  condition         GoodsCondition
+  note              String?
+  handoverMethod    HandoverMethod
+  status            GoodsDonationStatus @default(SUBMITTED)
+  receivedQuantity  Int?
+  receivedBy        String?
+  receiver          User?               @relation("GoodsDonationReceivedBy", fields: [receivedBy], references: [id])
+  receivedAt        DateTime?           @db.Timestamptz(3)
+  rejectReason      String?
+
+  @@index([campaignId, status])
+  @@map("goods_donations")
+}
+
+// quantity_remaining = received − allocated, dihitung di query — tidak disimpan (anti-desinkron).
+model InventoryItem {
+  id                  String    @id @default(uuid())
+  campaignId          String
+  campaign            Campaign  @relation(fields: [campaignId], references: [id])
+  name                String
+  category            String
+  unit                String
+  quantityReceived    Int       @default(0)
+  quantityAllocated   Int       @default(0)
+  quantityDistributed Int       @default(0)
+  expiresAt           DateTime? @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @db.Timestamptz(3)
+
+  distributionItems DistributionItem[]
+
+  @@index([campaignId])
+  @@map("inventory_items")
+}
+
+// Total APPROVED+PAID tidak melebihi dana terkonfirmasi — dijaga di aplikasi → 409 EXPENSE_EXCEEDS_FUNDS.
+model Expense {
+  id               String        @id @default(uuid())
+  campaignId       String
+  campaign         Campaign      @relation(fields: [campaignId], references: [id])
+  category         String
+  amountWei        Decimal       @db.Decimal(78, 0) // > 0, CHECK di migrasi
+  description      String
+  payeeName        String
+  createdBy        String
+  creator          User          @relation("ExpenseCreatedBy", fields: [createdBy], references: [id])
+  status           ExpenseStatus @default(PROPOSED)
+  reviewerId       String?
+  reviewer         User?         @relation("ExpenseReviewedBy", fields: [reviewerId], references: [id])
+  reviewedAt       DateTime?     @db.Timestamptz(3)
+  reviewNote       String?
+  paidAt           DateTime?     @db.Timestamptz(3)
+  paymentReference String?
+  blockchainTxId   String?
+  blockchainTx     BlockchainTransaction? @relation(fields: [blockchainTxId], references: [id])
+  createdAt        DateTime      @default(now()) @db.Timestamptz(3)
+
+  evidence ExpenseEvidence[]
+
+  @@index([campaignId, status])
+  @@map("expenses")
+}
+
+model ExpenseEvidence {
+  id           String       @id @default(uuid())
+  expenseId    String
+  expense      Expense      @relation(fields: [expenseId], references: [id])
+  storageKey   String
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  sha256       String
+  chainHash    String // keccak256
+  documentSalt String
+  uploadedBy   String
+  uploader     User         @relation("ExpenseEvidenceUploadedBy", fields: [uploadedBy], references: [id])
+  uploadedAt   DateTime     @default(now()) @db.Timestamptz(3)
+  anchorStatus AnchorStatus @default(NOT_ANCHORED)
+
+  @@index([expenseId])
+  @@map("expense_evidence")
+}
+
+// ───────────────────── §6 Distribusi bantuan ─────────────────────
+
+model DistributionBatch {
+  id                String             @id @default(uuid())
+  campaignId        String
+  campaign          Campaign           @relation(fields: [campaignId], references: [id])
+  title             String
+  aidType           AidType
+  generalLocation   String?
+  plannedDate       DateTime?          @db.Timestamptz(3)
+  dispatchedAt      DateTime?          @db.Timestamptz(3)
+  deliveredAt       DateTime?          @db.Timestamptz(3)
+  personInChargeId  String
+  personInCharge    User               @relation("DistributionPersonInCharge", fields: [personInChargeId], references: [id])
+  status            DistributionStatus @default(PLANNED)
+  notes             String?
+  verifiedBy        String?
+  verifier          User?              @relation("DistributionVerifiedBy", fields: [verifiedBy], references: [id])
+  verifiedAt        DateTime?          @db.Timestamptz(3)
+  blockchainTxId    String?
+  blockchainTx      BlockchainTransaction? @relation(fields: [blockchainTxId], references: [id])
+  createdAt         DateTime           @default(now()) @db.Timestamptz(3)
+
+  items     DistributionItem[]
+  evidence  DistributionEvidence[]
+
+  @@index([campaignId, status])
+  @@map("distribution_batches")
+}
+
+// Alokasi menaikkan inventory_items.quantity_allocated dalam transaksi sama; melebihi stok → 409 INSUFFICIENT_STOCK.
+model DistributionItem {
+  id                 String    @id @default(uuid())
+  batchId            String
+  batch              DistributionBatch @relation(fields: [batchId], references: [id])
+  inventoryItemId    String?
+  inventoryItem      InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  description        String
+  unit               String
+  quantityPlanned    Int
+  quantityDispatched Int       @default(0)
+  quantityReceived   Int       @default(0)
+
+  @@index([batchId])
+  @@map("distribution_items")
+}
+
+// Foto wajah/alamat penerima wajib REDACTED sebelum publik; PENDING hanya terlihat organizer & admin.
+model DistributionEvidence {
+  id             String            @id @default(uuid())
+  batchId        String
+  batch          DistributionBatch @relation(fields: [batchId], references: [id])
+  storageKey     String
+  mimeType       String
+  sha256         String
+  chainHash      String
+  documentSalt   String
+  capturedBy     String
+  capturer       User              @relation("DistributionEvidenceCapturedBy", fields: [capturedBy], references: [id])
+  capturedAt     DateTime          @default(now()) @db.Timestamptz(3)
+  privacyReview  PrivacyReview     @default(PENDING)
+  anchorStatus   AnchorStatus      @default(NOT_ANCHORED)
+
+  @@index([batchId])
+  @@map("distribution_evidence")
+}
+
+// ───────────────── §8 Jejak audit & operasional ─────────────────
+
+// id bigserial (bukan UUID) sesuai §8.
+model AuditLog {
+  id          BigInt   @id @default(autoincrement())
+  actorUserId String?
+  actor       User?    @relation("AuditLogActor", fields: [actorUserId], references: [id])
+  actorRole   String
+  action      String // mis. "campaign.updated"
+  entityType  String
+  entityId    String
+  before      Json?
+  after       Json?
+  reason      String?
+  requestId   String
+  ipHash      String // hash, bukan IP mentah
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([entityType, entityId, createdAt(sort: Desc)])
+  @@index([actorUserId, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+// status CONFIRMED hanya setelah receipt (README prinsip 3); partial unique tx di migrasi.
+model BlockchainTransaction {
+  id             String   @id @default(uuid())
+  chainId        Int
+  contractAddress String
+  kind           TxKind
+  referenceType  String
+  referenceId    String // uuid
+  idempotencyKey String   @unique // kind:referenceId — retry tidak menerbitkan catatan ganda
+  txHash         String?
+  status         TxStatus @default(PENDING)
+  attempts       Int      @default(0)
+  lastError      String?
+  blockNumber    BigInt?
+  logIndex       Int?
+  submittedBy    String?
+  submitter      User?    @relation("BlockchainTxSubmittedBy", fields: [submittedBy], references: [id])
+  confirmedAt    DateTime? @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  contributions     Contribution[]
+  expenses          Expense[]
+  distributionBatches DistributionBatch[]
+
+  @@index([status, createdAt])
+  @@map("blockchain_transactions")
+}
+
+// PK gabungan chain_id + contract_address; dipakai cron indexer.
+model IndexerCursor {
+  chainId         Int
+  contractAddress String
+  lastBlock       BigInt
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+
+  @@id([chainId, contractAddress])
+  @@map("indexer_cursors")
+}
+
+model Category {
+  id       String        @id @default(uuid())
+  scope    CategoryScope
+  name     String
+  slug     String
+  isActive Boolean       @default(true)
+
+  organizations Organization[]
+  events        Event[]        @relation("EventCategory")
+  campaigns     Campaign[]     @relation("CampaignCategory")
+
+  @@unique([scope, slug])
+  @@index([scope, isActive])
+  @@map("categories")
+}
+
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedBy String?
+  updater   User?    @relation("PlatformSettingUpdatedBy", fields: [updatedBy], references: [id])
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("platform_settings")
+}
+
+model AbuseReport {
+  id             String            @id @default(uuid())
+  reporterUserId String?
+  reporter       User?             @relation("AbuseReportReportedBy", fields: [reporterUserId], references: [id])
+  targetType     AbuseTargetType
+  targetId       String // uuid
+  reason         String
+  details        String?
+  status         AbuseReportStatus @default(OPEN)
+  handledBy      String?
+  handler        User?             @relation("AbuseReportHandledBy", fields: [handledBy], references: [id])
+  handledAt      DateTime?         @db.Timestamptz(3)
+  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
+
+  @@index([targetType, targetId])
+  @@index([status, createdAt])
+  @@map("abuse_reports")
+}

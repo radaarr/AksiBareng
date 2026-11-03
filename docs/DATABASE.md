@@ -252,3 +252,22 @@ Angka chain dan angka DB ditampilkan bersebelahan bila berbeda, dengan label sum
 - Jangan menyertakan data penerima bantuan yang dapat diidentifikasi. Gunakan "Keluarga A (Cilacap)" tanpa alamat.
 - Wallet demo: alamat testnet yang dihasilkan dari seed phrase yang **hanya** ada di mesin presenter, tidak di repo.
 - Seed harus idempoten (`upsert` berdasarkan `slug`/`email`) sehingga demo bisa dijalankan ulang.
+- Seed **tidak** boleh mengarang `tx_hash`: donasi uang dimulai sebagai `PENDING` dan menjadi `CONFIRMED` hanya setelah presenter mengirim transaksi testnet sungguhan (guardrail `AGENTS.md` §4). Seed hanya membuat permintaan donasi senilai 0,01 ETH testnet yang menunggu konfirmasi.
+
+## 11. Constraint yang hanya bisa dinyatakan lewat SQL migrasi
+
+Prisma tidak bisa mengekspresikan `CHECK` constraint dan *partial unique index*. Keduanya ditulis manual di migrasi `prisma/migrations/*_constraints/migration.sql`, yang dijalankan setelah `*_init`. `prisma migrate reset` dan `prisma migrate deploy` menerapkan keduanya; jangan menghapus migrasi ini walaupun `prisma db pull` tidak memperlihatkannya. Penegakan tambahan tetap ada di aplikasi (mis. `409`), karena constraint database hanya jaring pengaman terakhir.
+
+| Tabel | Constraint | Requirement terkait |
+|---|---|---|
+| `users` | `UNIQUE (lower(email))` | AUTH-01 (email tidak peka huruf besar/kecil) |
+| `wallet_links` | `CHECK (address = lower(address))`, `UNIQUE (lower(address), chain_id)` | AUTH-07 (satu wallet satu akun) |
+| `events` | `CHECK (ends_at > starts_at)`, `CHECK (registration_closes_at >= registration_opens_at)`, `CHECK (quota BETWEEN 1 AND 5000)` | EVT-01, EVT-08 |
+| `event_tasks` | `CHECK (quota > 0)` | SCH-01 |
+| `attendance_sessions` | `UNIQUE (event_id) WHERE status = 'OPEN'` | ATT-01 (satu sesi terbuka per kegiatan) |
+| `donations` | `UNIQUE (chain_id, tx_hash) WHERE tx_hash IS NOT NULL` | DON-05 (tidak ada donasi tercatat ganda) |
+| `goods_donations` | `CHECK (quantity > 0)` | GDS-01 |
+| `inventory_items` | `CHECK (quantity_received >= 0 AND quantity_allocated >= 0 AND quantity_distributed >= 0)`, `CHECK (quantity_allocated <= quantity_received)`, `CHECK (quantity_distributed <= quantity_allocated)` | GDS-05 |
+| `expenses` | `CHECK (amount_wei > 0)` | EXP-01 |
+| `distribution_items` | `CHECK (quantity_dispatched <= quantity_planned)`, `CHECK (quantity_received <= quantity_dispatched)` | DST-06 |
+| `blockchain_transactions` | `UNIQUE (chain_id, tx_hash, log_index) WHERE tx_hash IS NOT NULL` | T4.9 (tanpa duplikat catatan chain) |
