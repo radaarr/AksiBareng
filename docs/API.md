@@ -87,7 +87,27 @@ Penerapan MVP: pembatas disimpan di memori proses (`lib/api/rate-limit.ts`). Itu
 | GET | `/admin/organizations` | admin | AUTH-06 |
 | POST | `/admin/organizations/{id}/review` | admin | AUTH-06 |
 
-Review body: `{ "decision": "APPROVED" | "REJECTED", "note": "…" }`. Menerima verifikasi menaikkan `users.role` pemilik menjadi `ORGANIZER` dalam transaksi yang sama + audit log.
+Review body: `{ "decision": "APPROVED" | "REJECTED", "note": "wajib, ≥ 3 karakter" }`. Menerima verifikasi menaikkan `users.role` pemilik menjadi `ORGANIZER` dalam transaksi yang sama + audit log. Admin hanya dapat meninjau pengajuan `PENDING`; bila tidak ada → `409 INVALID_STATE_TRANSITION`.
+
+`POST /organizations`
+```json
+{ "name": "Komunitas Bersih Pantai", "categoryId": "<uuid kategori EVENT/CAMPAIGN aktif>", "contactEmail": "komunitas@aksibareng.test", "publicArea": "Cilacap, Jawa Tengah", "description": "…", "website": "https://…", "logoUrl": "https://…" }
+```
+→ `201 { "data": { "id": "…", "slug": "komunitas-bersih-pantai-1a2b3c", "verificationStatus": "UNVERIFIED", … } }`. Batas 10 / jam / user. Admin → `403 FORBIDDEN`; akun yang sudah punya organisasi → `409 INVALID_STATE_TRANSITION`. Role tetap `VOLUNTEER` sampai pengajuan disetujui.
+
+`GET /organizations/{id}` → `200 { "data": { "id", "name", "slug", "description", "publicArea", "website", "logoUrl", "verificationStatus", "createdAt" } }` — hanya field publik; `contactEmail`, `ownerId`, dan metadata dokumen **tidak** keluar. Organisasi tidak ditemukan → `404`.
+
+`PATCH /organizations/{id}` body: field opsional `name | description | contactEmail | publicArea | website | logoUrl` (minimal satu; tidak ada field status/role). Hanya pemilik atau admin; selain itu `404` (keberadaan resource tidak dibocorkan). `verificationStatus` hanya boleh berubah lewat alur verifikasi.
+
+`POST /organizations/{id}/verification` (owner)
+```json
+{ "documentStorageKey": "verifications/abc.pdf", "documentSha256": "<64 hex>", "documentSalt": "<≥16 karakter>", "note": "…" }
+```
+→ `201 { "data": { "id": "…", "status": "PENDING", "submittedAt": "…" } }`. Upload file itu sendiri belum tersedia (storage privat menyusul); klien mengirim metadata hasil unggah. Bila masih ada pengajuan `PENDING` → `409 INVALID_STATE_TRANSITION`. Organisasi diset `PENDING` dalam transaksi yang sama + audit log.
+
+`GET /admin/organizations?status=PENDING|VERIFIED|REJECTED&limit=20&cursor=<verificationId>` — hanya `ADMIN` (`403` sebaliknya). Respons `{ "data": [ { "verificationId", "status", "submittedAt", "documentStorageKey", "documentSha256", "organization": { "id", "name", "slug", "publicArea", "contactEmail", "owner": { "id", "displayName", "email" } } } ], "pagination": { "nextCursor": "…", "hasMore": true } }`.
+
+`POST /admin/organizations/{id}/review` → `200 { "data": { "verificationId": "…", "organizationId": "…", "verificationStatus": "VERIFIED|REJECTED", "ownerRoleRaised": true|false } }`. `APPROVED` menaikkan role pemilik `VOLUNTEER → ORGANIZER` dalam transaksi yang sama + audit log (`organization.verification_reviewed`, `reason` = `note`); `REJECTED` tidak mengubah role.
 
 ## 4. Kegiatan (AksiKegiatan)
 
