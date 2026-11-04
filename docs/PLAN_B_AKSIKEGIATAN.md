@@ -34,8 +34,8 @@ Di luar itu (Prisma, `lib/db.ts`, `lib/auth/`, `lib/authz.ts`, `lib/workflow/`, 
 
 | Yang **belum** ada dan menghambat B | Dampak |
 |---|---|
-| `lib/workflow/` (mesin transisi, `docs/FLOWS.md` §5) | Belum ada; `TEAM_PLAN.md` §2 menyebut tabel transisinya boleh ditambah B lewat PR kecil |
-| Helper `audit_logs` (T1.8) | Mutasi wajib audit; belum bisa dipenuhi |
+| `lib/workflow/` (mesin transisi, `docs/FLOWS.md` §5) | Belum ada; A menulis mesinnya, B menambah baris transisi event & registration lewat PR kecil |
+| Helper `audit_logs` (T1.8) | A menaruh penulisan audit di dalam `assertTransition`; audit untuk pembuatan entitas (mis. `POST /events`) belum dijanjikan |
 | `app/dashboard/page.tsx` masih placeholder ("T1.7 akan menggantikan") | T1.7 belum jalan |
 | Tidak ada library QR (`qrcode`/scanner) di `package.json` | T2.6 tidak bisa dikerjakan |
 | Seed hanya punya 1 kegiatan `PUBLISHED` | K-07 butuh kegiatan `DRAFT` untuk membuktikan draft tidak tampil; demo butuh sesi check-in |
@@ -44,19 +44,23 @@ Di luar itu (Prisma, `lib/db.ts`, `lib/auth/`, `lib/authz.ts`, `lib/workflow/`, 
 
 ---
 
-## 3. Prasyarat: status setelah merge AUTH-03 (`1ed416e`)
+## 3. Hasil kesepakatan dengan A
 
-| Prasyarat | Status |
+Sebagian sudah masuk `main` (`1ed416e`: `lib/authz.ts`, `lib/api/access.ts`, katalog error lengkap, `toFieldIssues()`).
+
+| Topik | Keputusan A |
 |---|---|
-| `lib/authz.ts` + daftar action | ✅ `event:*`, `registration:*`, `task:*`, `attendance:*`, `contribution:*` tersedia |
-| `lib/workflow/` | ⏳ mesin belum ada; tabel transisi boleh ditambah B lewat PR kecil (`TEAM_PLAN.md` §2) |
-| Helper audit (T1.8) | ❌ masih kosong — mutasi belum bisa menulis `audit_logs` |
-| Kode error `lib/api/problem.ts` | ✅ lengkap; `QUOTA_FULL`…`TOKEN_EXPIRED` sudah ada |
-| Kepemilikan route & skema Zod | ✅ `/registrations*`, `/task-assignments*`, `GET /users/me/registrations`, dan `lib/validation/{event,registration,task,attendance,contribution}.ts` kini resmi milik B; validasi wajib memakai `toFieldIssues()` dari `common.ts` |
+| `can()` | Murni peran + kepemilikan, **tanpa query DB**. Kuota, deadline pembatalan, dan status `CHECKED_IN` wajib dicek di route/domain |
+| Daftar action | `event:*`, `registration:*`, `task:*`, `attendance:*`, `contribution:*` — cukup. `PUBLISHED → ONGOING` dan `REGISTERED → NO_SHOW` tidak dipicu endpoint, jadi tidak perlu action baru, termasuk `event:complete` |
+| `lib/workflow/` | Mesin (`assertTransition`, tulis `audit_logs` before/after, `409 INVALID_STATE_TRANSITION`) ditulis A. Tabel transisi hanya data; baris **event & registration** jadi tanggung jawab B lewat PR kecil |
+| Guard domain | Syarat `>= 1 kategori`, `kuota > 0`, `ends_at > starts_at` **tidak** masuk tabel transisi — ditulis di modul domain milik B |
+| Route | `GET /users/me/registrations`, `POST /registrations/{id}/checkin-token`, `DELETE /task-assignments/{id}` resmi milik B. `GET /users/me/registrations` **wajib** memfilter `userId: actor.id` dari sesi, bukan dari query |
+| Zod | File per domain milik B, wajib memakai `toFieldIssues()` dari `common.ts` agar error selalu `422` + `errors[]` |
+| Prioritas | SCH-06 (hapus penempatan) P1 — dikerjakan **setelah** kuota & anti duplikat beres, jangan sampai menahan T2.2 |
 
-Tiga hal yang masih perlu ditanyakan ke A: helper audit, kerangka `lib/workflow/`, dan **action `event:complete` belum ada** padahal transisi `ONGOING → COMPLETED` dibutuhkan `docs/FLOWS.md` §3.1.
+Catatan pemakaian: `registration:create` hanya mengizinkan `VOLUNTEER` (organizer/admin tidak mendaftar dengan akunnya), dan `assertCan()` melempar `AccessDeniedError` yang diterjemahkan lewat `accessProblem(error, instance)` di `lib/api/access.ts`.
 
-Catatan saat memakai `lib/authz.ts`: `registration:create` hanya mengizinkan `VOLUNTEER` (organizer/admin tidak mendaftar dengan akunnya), dan `assertCan()` melempar `AccessDeniedError` yang harus diterjemahkan lewat `accessProblem(error, instance)` di `lib/api/access.ts`.
+Sisa ketergantungan: PR `lib/workflow/` dari A, plus pertanyaan apakah audit penulisan entitas baru juga disediakan di luar `assertTransition`. Sampai itu masuk, pekerjaan yang bisa jalan: S1 shell dashboard, skema Zod, dan modul guard domain.
 
 ---
 
@@ -159,7 +163,7 @@ API: `POST /events/{id}/attendance-sessions`, `POST /attendance-sessions/{id}/cl
 | Kode manual (token rusak/kamera gagal) | `method: MANUAL`, hanya organizer pemilik, tetap tercatat |
 
 - Satu sesi `OPEN` per event (partial unique index sudah ada di migrasi) → `409` bila membuka sesi kedua.
-- Helper token ditaruh di `lib/validation/` atau `lib/workflow/`? **Butuh keputusan A** (§3); B tidak membuat file baru di wilayah A tanpa persetujuan. Fungsi harus murni agar bisa diuji unit (K-16…K-18).
+- Lokasi helper token belum diputuskan: skema masuk `lib/validation/attendance.ts` (milik B), tetapi penandatanganan HMAC bukan validasi. Usulkan ke A: `lib/workflow/qr-token.ts` sebagai fungsi murni, atau file sendiri di luar wilayah A. Fungsi harus murni agar bisa diuji unit (K-16…K-18).
 - QR generation: tambah dependensi (`qrcode` untuk render, `@zxing/browser` atau `BarcodeDetector` + fallback untuk scan). Minta A menyetujui `package.json` sebelum mulai.
 - Halaman `/dashboard/organizer/events/[id]/attendance`: tampilkan QR sesi (bukan token per relawan), tombol buka/tutup sesi, scanner besar + input kode manual + umpan balik teks **dan** getar saat sukses (`docs/UI_UX.md` §6). Nyaman di 360 px, check-in < 3 detik.
 
@@ -234,4 +238,4 @@ Hari 3        S5 QR check-in → S6 verifikasi kontribusi → Gate 2
 Hari 3+       T3.4/T3.6, lalu T5.1/T5.2a
 ```
 
-Titik tunggu nyata hanya satu: `lib/authz.ts` + `lib/workflow/` dari A. Semua yang ada di S0/S1 sengaja diletakkan lebih dulu supaya B tidak menganggur saat menunggu.
+Titik tunggu tinggal `lib/workflow/` dari A (`lib/authz.ts` sudah ada). S0/S1 sengaja diletakkan lebih dulu supaya B tidak menganggur saat menunggu.
