@@ -1,4 +1,4 @@
-import type { EventStatus, UserRole } from '@prisma/client'
+import type { CampaignStatus, EventStatus, UserRole } from '@prisma/client'
 
 // Kontrak akses: docs/RBAC.md §2–§3, nama action: docs/RBAC.md §3.5.
 // Semua fungsi di file ini murni — tanpa database dan tanpa next/server — supaya
@@ -17,6 +17,12 @@ export type AccessActor = {
 export type EventResource = {
   organizationId: string
   status: EventStatus
+}
+
+/** Bentuk minimal untuk memutuskan akses pada kampanye. */
+export type CampaignResource = {
+  organizationId: string
+  status: CampaignStatus
 }
 
 /** Registrasi/kontribusi: hanya kepemilikan yang menentukan. */
@@ -55,6 +61,14 @@ export type Action =
   | 'contribution:list'
   | 'contribution:verify'
   | 'contribution:revoke'
+  | 'campaign:create'
+  | 'campaign:read_own'
+  | 'campaign:update'
+  | 'campaign:budget'
+  | 'campaign:submit'
+  | 'campaign:review'
+  | 'campaign:pause'
+  | 'organization:review'
 
 /** Resource minimal per action; `void` berarti cukup peran saja. */
 export type ActionResource = {
@@ -82,6 +96,14 @@ export type ActionResource = {
   'contribution:list': EventResource
   'contribution:verify': EventResource
   'contribution:revoke': void
+  'campaign:create': void
+  'campaign:read_own': void
+  'campaign:update': CampaignResource
+  'campaign:budget': CampaignResource
+  'campaign:submit': CampaignResource
+  'campaign:review': void
+  'campaign:pause': void
+  'organization:review': void
 }
 
 /** Status kegiatan yang boleh dilihat publik dan menerima pendaftaran (EVT-04, EVT-06). */
@@ -129,14 +151,31 @@ const RULES: { [A in Action]: (actor: AccessActor, resource: ActionResource[A]) 
   'contribution:read_own': (actor, registration) => registration.userId === actor.id,
   'contribution:list': (actor, event) => ownsOrganization(actor, event.organizationId),
   'contribution:verify': (actor, event) => ownsOrganization(actor, event.organizationId),
-  'contribution:revoke': (actor) => actor.role === 'ADMIN'
+  'contribution:revoke': (actor) => actor.role === 'ADMIN',
+
+  'campaign:create': (actor) => actor.role === 'ORGANIZER' && actor.organizationId !== null,
+  'campaign:read_own': (actor) => actor.role === 'ORGANIZER' && actor.organizationId !== null,
+  // Status kampanye (DRAFT/REJECTED vs ACTIVE) adalah precondition bisnis;
+  // diperiksa route handler agar dapat menjawab 409, bukan di matriks akses.
+  'campaign:update': (actor, campaign) => ownsOrganization(actor, campaign.organizationId),
+  'campaign:budget': (actor, campaign) => ownsOrganization(actor, campaign.organizationId),  'campaign:submit': (actor, campaign) =>
+    ownsOrganization(actor, campaign.organizationId),
+
+  'campaign:review': (actor) => actor.role === 'ADMIN',
+  'campaign:pause': (actor) => actor.role === 'ADMIN',
+  'organization:review': (actor) => actor.role === 'ADMIN'
 }
 
 /** Action yang tidak membawa resource: penolakannya selalu `403`, bukan `404`. */
 const ROLE_ONLY_ACTIONS: ReadonlySet<Action> = new Set<Action>([
   'event:create',
   'event:list_own',
-  'contribution:revoke'
+  'contribution:revoke',
+  'campaign:create',
+  'campaign:read_own',
+  'campaign:review',
+  'campaign:pause',
+  'organization:review'
 ])
 
 /** Action pada kegiatan yang keberadaannya sudah publik bila statusnya terbuka. */
@@ -152,11 +191,23 @@ function hasEventStatus(resource: unknown): resource is EventResource {
   return typeof resource === 'object' && resource !== null && 'status' in resource
 }
 
+function hasCampaignStatus(resource: unknown): resource is CampaignResource {
+  return typeof resource === 'object' && resource !== null && 'status' in resource
+}
+
+/** Status kampanye yang sudah tampil publik (docs/API.md §5). */
+function isPublicCampaign(status: CampaignStatus): boolean {
+  return status === 'ACTIVE' || status === 'CLOSED' || status === 'COMPLETED'
+}
+
 // docs/RBAC.md §5: resource privat → 404 agar keberadaan data tidak bocor;
 // 403 hanya bila keberadaan resource memang sudah publik atau yang ditolak murni peran.
 function denialCodeFor(action: Action, resource: unknown): 'FORBIDDEN' | 'NOT_FOUND' {
   if (ROLE_ONLY_ACTIONS.has(action)) return 'FORBIDDEN'
   if (PUBLIC_EXISTENCE_ACTIONS.has(action) && hasEventStatus(resource) && isPublicEvent(resource.status)) {
+    return 'FORBIDDEN'
+  }
+  if (action.startsWith('campaign:') && hasCampaignStatus(resource) && isPublicCampaign(resource.status)) {
     return 'FORBIDDEN'
   }
   return 'NOT_FOUND'

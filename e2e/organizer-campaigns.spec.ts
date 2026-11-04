@@ -20,10 +20,12 @@ test('daftar kampanye organizer membaca data database dan status tinjauan', asyn
 })
 
 test('form menyimpan draf, revisi anggaran, lalu mengirim ke tinjauan admin', async ({ page }) => {
+  const title = `Dapur Umum Uji ${Date.now()}`
+
   await login(page, 'komunitas@aksibareng.test')
   await page.goto('/dashboard/organizer/campaigns/new')
 
-  await page.getByLabel('Judul kampanye').fill('Dapur Umum Uji Sambung')
+  await page.getByLabel('Judul kampanye').fill(title)
   await page.getByLabel('Lokasi umum').fill('Cilacap, Jawa Tengah')
   await page.getByLabel('Periode mulai').fill('2026-11-20')
   await page.getByLabel('Periode selesai').fill('2026-11-30')
@@ -49,7 +51,7 @@ test('form menyimpan draf, revisi anggaran, lalu mengirim ke tinjauan admin', as
 
   await page.getByRole('link', { name: 'Lihat kampanye saya' }).click()
   await page.waitForURL('**/dashboard/organizer/campaigns')
-  await expect(page.getByText('Dapur Umum Uji Sambung')).toBeVisible()
+  await expect(page.getByRole('heading', { name: title })).toBeVisible()
   await expect(page.getByText(/Menunggu tinjauan/).first()).toBeVisible()
 })
 

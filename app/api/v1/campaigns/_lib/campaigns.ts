@@ -1,27 +1,12 @@
-import { createHash, randomUUID } from 'node:crypto'
-import type { NextRequest } from 'next/server'
+import { randomUUID } from 'node:crypto'
 import { Prisma, type CategoryScope, type CampaignStatus } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import type { Actor } from '@/lib/auth/session'
+import { writeAudit, type RequestContext } from '../../_lib/audit'
+
+export { requestContext, type RequestContext } from '../../_lib/audit'
 
 export const CAMPAIGN_PUBLIC_STATUSES: CampaignStatus[] = ['ACTIVE', 'CLOSED', 'COMPLETED']
-
-export type RequestContext = {
-  requestId: string
-  ipHash: string
-}
-
-/** Request id + hash IP untuk audit log; IP mentah tidak pernah disimpan. */
-export function requestContext(request: NextRequest): RequestContext {
-  const suppliedRequestId = request.headers.get('x-request-id')?.trim()
-  const requestId = suppliedRequestId ? suppliedRequestId.slice(0, 100) : randomUUID()
-  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'lokal'
-  const ipHash = createHash('sha256')
-    .update(`${clientIp}:${process.env.AUTH_SECRET ?? 'dev'}`)
-    .digest('hex')
-
-  return { requestId, ipHash }
-}
 
 /** Slug publik tanpa data pribadi; sufiks mencegah tabrakan judul. */
 export function campaignSlug(title: string): string {
@@ -89,17 +74,5 @@ type AuditInput = {
 }
 
 export async function writeCampaignAudit(tx: Prisma.TransactionClient, input: AuditInput) {
-  await tx.auditLog.create({
-    data: {
-      actorUserId: input.actor.id,
-      actorRole: input.actor.role,
-      action: input.action,
-      entityType: 'campaign',
-      entityId: input.entityId,
-      before: input.before,
-      after: input.after,
-      requestId: input.context.requestId,
-      ipHash: input.context.ipHash
-    }
-  })
+  await writeAudit(tx, { ...input, entityType: 'campaign' })
 }

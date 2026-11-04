@@ -121,6 +121,14 @@ Implementasi memakai `can(actor, action, resource)`. Nama action di bawah adalah
 | `contribution:list` | `{ organizationId, status }` | pemilik kegiatan |
 | `contribution:verify` | `{ organizationId, status }` | pemilik kegiatan |
 | `contribution:revoke` | — | `ADMIN` |
+| `campaign:create` | — | `ORGANIZER` yang punya organisasi |
+| `campaign:read_own` | — | `ORGANIZER` |
+| `campaign:update` | `{ organizationId, status }` | pemilik, `DRAFT`/`REJECTED` |
+| `campaign:budget` | `{ organizationId, status }` | pemilik, `DRAFT`/`REJECTED` |
+| `campaign:submit` | `{ organizationId, status }` | pemilik, `DRAFT`/`REJECTED` |
+| `campaign:review` | — | `ADMIN` |
+| `campaign:pause` | — | `ADMIN` |
+| `organization:review` | — | `ADMIN` |
 
 Pemakaian di route handler:
 

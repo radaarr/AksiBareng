@@ -83,7 +83,7 @@ Penerapan MVP: pembatas disimpan di memori proses (`lib/api/rate-limit.ts`). Itu
 | GET | `/admin/organizations` | admin | AUTH-06 |
 | POST | `/admin/organizations/{id}/review` | admin | AUTH-06 |
 
-Review body: `{ "decision": "APPROVED" | "REJECTED", "note": "…" }`. Menerima verifikasi menaikkan `users.role` pemilik menjadi `ORGANIZER` dalam transaksi yang sama + audit log.
+Review body: `{ "decision": "APPROVED" | "REJECTED", "note": "…" }`. Menerima verifikasi menaikkan `users.role` pemilik menjadi `ORGANIZER` dalam transaksi yang sama + audit log. `note` wajib minimal 10 karakter saat `REJECTED`. Hanya organisasi berstatus `PENDING` dengan pengajuan `PENDING` yang dapat ditinjau; status lain → `409 INVALID_STATE_TRANSITION`.
 
 ## 4. Kegiatan (AksiKegiatan)
 
@@ -150,7 +150,9 @@ Token berumur 120 detik, sekali pakai per sesi. `POST /attendance-sessions/{id}/
 | POST | `/admin/campaigns/{id}/pause` | admin | PRD §9.1 |
 | POST | `/campaigns/{id}/abuse-reports` | login | CAM-09 (P1) |
 
-Organizer belum terverifikasi → `403 ORGANIZATION_NOT_VERIFIED`. Review admin `{ "decision": "APPROVED"|"REJECTED", "note": "…" }`; `APPROVED` memindahkan status ke `ACTIVE` dan (opsional) memicu `createCampaign()` on-chain.
+Organizer belum terverifikasi → `403 ORGANIZATION_NOT_VERIFIED`. Review admin `{ "decision": "APPROVED"|"REJECTED", "note": "…" }`; `APPROVED` memindahkan status ke `ACTIVE` dan (opsional) memicu `createCampaign()` on-chain. `note` wajib minimal 10 karakter saat `REJECTED`. Hanya kampanye `PENDING_REVIEW` yang dapat ditinjau; status lain → `409 INVALID_STATE_TRANSITION`.
+
+`POST /admin/campaigns/{id}/pause` body `{ "note": "…" }` (wajib, minimal 10 karakter) mengubah `ACTIVE` → `PAUSED` tanpa menghapus kampanye, donasi, atau riwayat. Status dan alasan sebelumnya tetap tersedia di `audit_logs`; status selain `ACTIVE` → `409 INVALID_STATE_TRANSITION`.
 
 `POST /campaigns` membuat draf beserta anggaran versi 1 dalam satu transaksi:
 ```json
