@@ -10,6 +10,12 @@ import { rateLimit } from '@/lib/api/rate-limit'
 const LOGIN_LIMIT = 10
 const LOGIN_WINDOW_MS = 15 * 60 * 1000
 
+// Hash Argon2id dari kata sandi yang tidak dipakai akun mana pun. Verifikasi tetap
+// dijalankan saat email tidak ditemukan supaya waktu respons tidak membocorkan
+// email mana yang terdaftar (K-06). Parameter identik dengan lib/auth/password.ts.
+const DUMMY_PASSWORD_HASH =
+  '$argon2id$v=19$m=65536,t=3,p=1$xX+CDjlX2iHqQTupvLeswA$Ck2wUdt425hptGWIDQWyY0STh5qDeWtRb9PeMYzz3mA'
+
 class RateLimitedSignIn extends CredentialsSignin {
   code = 'rate_limited'
 }
@@ -42,9 +48,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           select: { id: true, email: true, displayName: true, passwordHash: true, status: true }
         })
 
-        // Pesan gagal diseragamkan: jangan membocorkan email mana yang terdaftar.
-        if (!user || user.status !== 'ACTIVE') return null
-        if (!(await verifyPassword(user.passwordHash, parsed.data.password))) return null
+        // Selalu satu verifikasi: akun tidak ada, akun nonaktif, dan akun aktif
+        // memakan waktu yang sama. Pesan gagal tetap seragam (docs/PRD.md §14.1).
+        const passwordMatches = await verifyPassword(
+          user?.passwordHash ?? DUMMY_PASSWORD_HASH,
+          parsed.data.password
+        )
+        if (!user || user.status !== 'ACTIVE' || !passwordMatches) return null
 
         await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
 

@@ -24,6 +24,8 @@ Aturan: test integrasi memakai database terpisah (`DATABASE_URL_TEST`) dan migra
 | K-01b | AUTH-01 | 11 percobaan login gagal dalam 15 menit | Percobaan ke-11 → `429 RATE_LIMITED` |
 | K-02 | AUTH-03 | Volunteer memanggil endpoint admin/organizer | `403 FORBIDDEN`; tidak ada perubahan data |
 | K-02b | AUTH-03 | Body berisi `"role": "ADMIN"` saat register | Role diabaikan, tetap `VOLUNTEER` |
+| K-02c | AUTH-03, PRD §14.1 | Organizer B mengubah/membatalkan kegiatan organisasi A | `404` untuk draf, `403` untuk kegiatan publik; data tidak berubah |
+| K-02d | AUTH-03 | Relawan memanggil verify kontribusi; organizer memanggil revoke kontribusi | `403`; matriks diuji unit di `tests/auth/authz.test.ts` |
 | K-03 | AUTH-04, AUTH-06 | Organizer A mengakses kampanye organisasi B | `404` (resource privat), bukan `200` |
 | K-04 | AUTH-05, AUTH-06 | Pengajuan verifikasi → admin approve | `organizations.verification_status=VERIFIED`, role owner `ORGANIZER`, audit log ada |
 | K-05 | AUTH-07 | Tautkan wallet dengan tanda tangan valid | `wallet_links.status=VERIFIED` |

@@ -40,7 +40,7 @@ Error: RFC 7807, `Content-Type: application/problem+json` (lihat §8).
 |---|---|
 | `POST /auth/login` | 10 / 15 menit / IP+email |
 | `POST /auth/register` | 5 / jam / IP |
-| `POST /registrations` | 30 / jam / user |
+| `POST /events/{id}/registrations` | 30 / jam / user |
 | `POST /abuse-reports` | 5 / hari / user |
 | `POST /attendance-sessions/{id}/scan` | 60 / menit / organizer |
 | `POST /donations/intent` | 20 / jam / user |

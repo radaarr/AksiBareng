@@ -91,6 +91,56 @@ Aturan identitas:
 | Mengubah nominal donasi / menghapus histori | ❌ | Tidak pernah ada (PRD §10.3) |
 | Menjadi organizer atas nama organisasi | ❌ | Tidak boleh membuat kegiatan/donasi pribadi |
 
+### 3.5 Nama action di `lib/authz.ts`
+
+Implementasi memakai `can(actor, action, resource)`. Nama action di bawah adalah kontraknya; menambah akses baru wajib menambah entri di tabel `RULES`, dan TypeScript menolak action tanpa aturan (deny by default).
+
+| Action | Resource minimal | Boleh |
+|---|---|---|
+| `event:create` | — | `ORGANIZER` yang punya organisasi |
+| `event:read` | `{ organizationId, status }` | semua bila `PUBLISHED`/`ONGOING`; selain itu pemilik + admin |
+| `event:list_own` | — | `ORGANIZER` |
+| `event:update` | `{ organizationId, status }` | pemilik |
+| `event:publish` | `{ organizationId, status }` | pemilik |
+| `event:close_registration` | `{ organizationId, status }` | pemilik |
+| `event:cancel` | `{ organizationId, status }` | pemilik |
+| `registration:create` | `{ organizationId, status }` | `VOLUNTEER`, kegiatan `PUBLISHED`/`ONGOING` |
+| `registration:read_own` | `{ userId }` | `userId == actor.id` |
+| `registration:cancel_own` | `{ userId }` | `userId == actor.id` |
+| `registration:list` | `{ organizationId, status }` | pemilik kegiatan |
+| `task:create` | `{ organizationId, status }` | pemilik kegiatan |
+| `task:update` | `{ organizationId, status }` | pemilik kegiatan |
+| `task:assign` | `{ organizationId, status }` | pemilik kegiatan |
+| `task:unassign` | `{ organizationId, status }` | pemilik kegiatan |
+| `task:read` | `{ eventOrganizationId, assignedUserId }` | pemilik kegiatan atau relawan yang ditempatkan |
+| `attendance:create_session` | `{ organizationId, status }` | pemilik kegiatan |
+| `attendance:close_session` | `{ organizationId, status }` | pemilik kegiatan |
+| `attendance:issue_token` | `{ userId }` | `userId == actor.id` |
+| `attendance:scan` | `{ organizationId, status }` | pemilik kegiatan |
+| `contribution:read_own` | `{ userId }` | `userId == actor.id` |
+| `contribution:list` | `{ organizationId, status }` | pemilik kegiatan |
+| `contribution:verify` | `{ organizationId, status }` | pemilik kegiatan |
+| `contribution:revoke` | — | `ADMIN` |
+
+Pemakaian di route handler:
+
+```ts
+const actor = await requireActor() // 401 bila tanpa sesi
+const event = await prisma.event.findUnique({
+  where: { id },
+  select: { organizationId: true, status: true } // selector minimal, bukan SELECT *
+})
+if (!event) return problem({ status: 404, code: 'NOT_FOUND', detail: 'Data tidak ditemukan.', instance })
+assertCan(actor, 'event:update', event) // 403 atau 404 otomatis
+```
+
+Aturan pemakaian:
+
+1. `can()`/`assertCan()` **tidak** menyentuh database dan **tidak** memeriksa precondition bisnis (kuota, periode, stok, legalitas transisi). Urutannya: `requireActor()` → ambil resource dengan selector minimal → `assertCan()` → precondition domain.
+2. Resource yang dibutuhkan hanya projection: `{ organizationId, status }` untuk kegiatan, `{ userId }` untuk registrasi/kontribusi.
+3. `assertCan()` melempar `AccessDeniedError`; route handler memetakannya lewat `accessProblem()` di `lib/api/access.ts`.
+4. Resource privat ditolak `404`; `403` dipakai untuk action yang murni soal peran dan untuk kegiatan yang statusnya sudah publik.
+
 ## 4. Matriks resource × aksi (ringkas)
 
 | Resource | Create | Read | Update | Delete/Revoke |
@@ -145,7 +195,7 @@ campaigns.organization_id == actor.organizationId → pemilik kampanye
 
 ## 7. Checklist penegakan
 
-- [ ] Setiap route handler privat memanggil `requireSession()` lalu `can(...)`.
+- [ ] Setiap route handler privat memanggil `requireActor()` (401) lalu `assertCan(...)` (403/404); halaman server memakai `requireSession()`.
 - [ ] Setiap query Prisma memfilter `organizationId`/`userId` dari sesi, bukan dari body.
 - [ ] Aksi admin menulis `audit_logs` dengan `actor`, `action`, `reason`.
 - [ ] Endpoint yang mengubah status memvalidasi transisi (lihat `docs/FLOWS.md` §3), bukan hanya role.
