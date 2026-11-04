@@ -37,6 +37,8 @@ const ids = {
   verificationVerified: 'a2000000-0000-4000-8000-000000000001',
   verificationPending: 'a2000000-0000-4000-8000-000000000002',
   event: 'a3000000-0000-4000-8000-000000000001',
+  eventDraft: 'a3000000-0000-4000-8000-000000000002',
+  attendanceSessionClosed: 'a3100000-0000-4000-8000-000000000001',
   taskKebersihan: 'a4000000-0000-4000-8000-000000000001',
   taskLogistik: 'a4000000-0000-4000-8000-000000000002',
   taskDokumentasi: 'a4000000-0000-4000-8000-000000000003',
@@ -309,6 +311,45 @@ async function main() {
       }
     })
   }
+
+  // Kegiatan DRAFT (K-07: draf tidak tampil publik) dan sesi check-in tertutup
+  // tanpa catatan kehadiran — contoh struktur data, bukan rekap kegiatan.
+  await prisma.event.upsert({
+    where: { slug: 'posko-persiapan-banjir' },
+    update: { status: 'DRAFT', quota: 30 },
+    create: {
+      id: ids.eventDraft,
+      organizationId: orgVerified.id,
+      title: 'Posko Persiapan Banjir',
+      slug: 'posko-persiapan-banjir',
+      description: 'Persiapan dapur umum dan logistik untuk antisipasi banjir tahunan.',
+      categoryId: orgCategory.id,
+      locationName: 'Balai Komunitas Teluk Penyu',
+      publicAddress: 'Area Balai Komunitas Teluk Penyu, Cilacap',
+      city: 'Cilacap',
+      startsAt: daysFromNow(21, 1),
+      endsAt: daysFromNow(21, 5),
+      quota: 30,
+      registrationOpensAt: daysFromNow(7),
+      registrationClosesAt: daysFromNow(19),
+      cancellationDeadline: daysFromNow(20),
+      status: 'DRAFT',
+      createdBy: organizer.id
+    }
+  })
+
+  await prisma.attendanceSession.upsert({
+    where: { id: ids.attendanceSessionClosed },
+    update: { status: 'CLOSED' },
+    create: {
+      id: ids.attendanceSessionClosed,
+      eventId: event.id,
+      openedBy: organizer.id,
+      opensAt: daysFromNow(-3, 7),
+      closesAt: daysFromNow(-3, 9),
+      status: 'CLOSED'
+    }
+  })
 
   // ── Kampanye: 100 Meals for Cilacap, target 0,5 ETH testnet, 3 kategori anggaran ──
   const campaign = await prisma.campaign.upsert({
