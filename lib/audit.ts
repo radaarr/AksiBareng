@@ -6,12 +6,27 @@ import { Prisma, type UserRole } from '@prisma/client'
 // sengaja hanya menyediakan jalur transaksional supaya pemanggil tidak bisa
 // lupa — kegagalan tulis audit menggagalkan transaksi, data tidak menggantung.
 
+// Katalog action AksiKegiatan (docs/FLOWS.md §3.1) — event & registration.
 export const AUDIT_ACTIONS = [
   'user.profile_updated',
   'organization.created',
   'organization.updated',
   'organization.verification_submitted',
-  'organization.verification_reviewed'
+  'organization.verification_reviewed',
+  'event.created',
+  'event.updated',
+  'event.published',
+  'event.close_registration',
+  'event.cancelled',
+  'registration.created',
+  'registration.cancelled',
+  'attendance.session_opened',
+  'attendance.session_closed',
+  'attendance.checked_in',
+  'contribution.verified',
+  'contribution.revoked',
+  'task.assignment_created',
+  'task.assignment_removed'
 ] as const
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]
