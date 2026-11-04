@@ -36,3 +36,21 @@ jobs:
 
       - name: Unit test
         run: pnpm test
+
+  chain:
+    name: chain tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install contracts
+        run: pnpm --dir contracts install --frozen-lockfile
+
+      - name: Chain tests
+        run: pnpm --dir contracts test

@@ -183,20 +183,22 @@ Setelah deploy:
 
 ## 8. Test yang wajib ada
 
+Test dijalankan dengan `pnpm chain:test` (`contracts/`, Hardhat); CI menjalankan job `chain`.
+
 `contracts/test/DonationTransparency.t.sol` / `.ts`:
 
-- [ ] `createCampaign` menolak pemanggil tanpa role; menolak `targetWei == 0`; menolak `key` duplikat.
-- [ ] `donate` menolak saat `Paused`/`Closed`; menolak `msg.value == 0`; menambah `totalDonatedWei` dengan benar untuk dua donatur.
-- [ ] `proposeExpense` hanya untuk organizer kampanye tersebut.
-- [ ] `approveExpense` menolak `approvedBy == proposedBy`.
-- [ ] `releaseFunds` menolak sebelum `Approved`; menolak melebihi saldo; menandai `Released` dan mencegah double release.
-- [ ] `recordExpenseProof` menolak `evidenceHash == 0`; menerima dua bukti untuk pengeluaran sama (riwayat).
-- [ ] `recordDistribution` hanya `RECORDER_ROLE`.
-- [ ] `closeCampaign` hanya manager; donasi setelah `Closed` revert.
-- [ ] `pause/unpause` hanya admin; efeknya hanya pada `donate`/`releaseFunds`.
-- [ ] Reentrancy: kontrak penyerang gagal saat `releaseFunds` (guard aktif).
-- [ ] Fuzz: `donate` dengan nominal acak tidak pernah membuat `totalDonatedWei` meluap (Solidity 0.8 + batas realistis).
-- [ ] Role admin tidak dapat diberikan oleh relayer.
+- [x] `createCampaign` menolak pemanggil tanpa role; menolak `targetWei == 0`; menolak `key` duplikat.
+- [x] `donate` menolak saat `Paused`/`Closed`; menolak `msg.value == 0`; menambah `totalDonatedWei` dengan benar untuk dua donatur.
+- [x] `proposeExpense` hanya untuk organizer kampanye tersebut.
+- [x] `approveExpense` menolak `approvedBy == proposedBy`.
+- [x] `releaseFunds` menolak sebelum `Approved`; menolak melebihi saldo; menandai `Released` dan mencegah double release.
+- [x] `recordExpenseProof` menolak `evidenceHash == 0`; menerima dua bukti untuk pengeluaran sama (riwayat).
+- [x] `recordDistribution` hanya `RECORDER_ROLE`.
+- [x] `closeCampaign` hanya manager; donasi setelah `Closed` revert.
+- [x] `pause/unpause` hanya admin; efeknya hanya pada `donate`/`releaseFunds`.
+- [x] Reentrancy: kontrak penyerang gagal saat `releaseFunds` (guard aktif).
+- [x] Fuzz: `donate` dengan nominal acak tidak pernah membuat `totalDonatedWei` meluap (Solidity 0.8 + batas realistis).
+- [x] Role admin tidak dapat diberikan oleh relayer.
 
 `contracts/test/ContributionRegistry.t.sol`:
 
