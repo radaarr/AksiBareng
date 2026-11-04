@@ -70,6 +70,9 @@ Aturan: test integrasi memakai database terpisah (`DATABASE_URL_TEST`) dan migra
 | K-26 | CAM-04 | Admin approve | `ACTIVE`; muncul di katalog publik |
 | K-27 | CAM-04 | Admin reject | `REJECTED` + catatan; tidak tampil publik |
 | K-28 | CAM-07 | Ubah target setelah `ACTIVE` | `409`; perubahan rencana hanya via versi anggaran baru, versi lama tersimpan |
+| K-61 | CAM-05, CAM-06, TRN-01, TRN-02 | Buka `/campaigns` lalu detail `/campaigns/dapur-umum-cilacap`; buka slug yang tidak ada | Hanya kampanye `ACTIVE`/`CLOSED`/`COMPLETED` tampil; tiga angka dana terpisah dengan badge sumber (`Dari blockchain`/`Dari catatan organizer`); label simulasi tampil; slug tidak dikenal → 404 |
+| K-62 | CAM-01, CAM-02, CAM-03, CAM-04 | Form kampanye organizer: login, simpan versi anggaran, kirim; buka sebagai organizer belum terverifikasi | Draf + anggaran versi 1 tersimpan di database; revisi menjadi versi baru, versi lama tetap ada dengan `superseded_at`; kirim → `PENDING_REVIEW`; gate menampilkan alasan + tautan pengajuan, form tidak tampil; label simulasi tampil |
+| K-63 | CAM-01, CAM-03, CAM-04 | `POST /campaigns` tanpa sesi / organisasi belum terverifikasi; `PUT /budget` dua kali; `POST /submit` tanpa anggaran lalu dengan anggaran | `401 UNAUTHENTICATED` / `403 ORGANIZATION_NOT_VERIFIED`; versi lama `superseded_at`, versi baru aktif; `422 VALIDATION_ERROR` lalu `200` dengan status `PENDING_REVIEW` |
 | K-29 | DON-02, DON-03 | Intent donasi lalu transaksi sukses di Sepolia | `PENDING` → `CONFIRMED`, total naik sekali |
 | K-30 | DON-03, DON-05 | Transaksi revert / dibatalkan | `FAILED`; total **tidak** naik |
 | K-31 | DON-04 | Kirim `txHash` milik donasi lain | `409`; tidak ada donasi baru tercatat |
@@ -101,6 +104,7 @@ Aturan: test integrasi memakai database terpisah (`DATABASE_URL_TEST`) dan migra
 | K-47 | PRD §14.2 | Snapshot respons publik (events, campaigns, transparency, verify) | Tidak ada `email`, `phone`, `passwordHash`, `address` donatur, nama penerima |
 | K-48 | PRD §10.4 | Review payload on-chain (unit test kontrak) | Hanya `bytes32`/`address`/`uint`; tidak ada `string` bebas |
 | K-49 | PRD §19 | Pencarian kode | Tidak ada data pribadi di seed publik/commit |
+| K-60 | PRD §12, UI_UX §2 | Landing dan halaman cara kerja | `/` dan `/how-it-works` terbuka; label SIMULASI tampil; navigasi tidak menuju route yang belum ada |
 
 ### 2.7 Unggahan & keamanan umum
 
