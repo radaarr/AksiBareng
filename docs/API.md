@@ -152,6 +152,16 @@ Token berumur 120 detik, sekali pakai per sesi. `POST /attendance-sessions/{id}/
 
 Organizer belum terverifikasi → `403 ORGANIZATION_NOT_VERIFIED`. Review admin `{ "decision": "APPROVED"|"REJECTED", "note": "…" }`; `APPROVED` memindahkan status ke `ACTIVE` dan (opsional) memicu `createCampaign()` on-chain.
 
+`POST /campaigns` membuat draf beserta anggaran versi 1 dalam satu transaksi:
+```json
+{ "title": "Dapur Umum untuk Warga Cilacap", "story": "…minimal 40 karakter…", "categorySlug": "pangan", "periodStartsAt": "2026-11-05T00:00:00.000Z", "periodEndsAt": "2026-11-26T00:00:00.000Z", "targetAmountWei": "5000000000000000000", "generalLocation": "Cilacap, Jawa Tengah", "budgetItems": [{ "category": "Bahan makanan", "description": "Beras dan sayur", "plannedWei": "2400000000000000000" }] }
+```
+→ `201 { "data": { "id": "…", "slug": "…", "status": "DRAFT", "budgets": [{ "version": 1, … }] } }`. `PATCH /campaigns/{id}` menerima subset field yang sama tanpa `budgetItems` dan hanya untuk `DRAFT`/`REJECTED`.
+
+`PUT /campaigns/{id}/budget` body `{ "items": [ … ] }` membuat versi berikutnya; semua baris versi lama diberi `supersededAt` dan tetap tersimpan. Respons `200 { "data": { "campaignId": "…", "version": 2, "totalWei": "…", "items": [ … ] } }`.
+
+`POST /campaigns/{id}/submit` → `200 { "data": { "id": "…", "status": "PENDING_REVIEW" } }`. Tanpa anggaran aktif → `422 VALIDATION_ERROR`; status selain `DRAFT`/`REJECTED` → `409 INVALID_STATE_TRANSITION`.
+
 ## 6. Donasi uang, barang, inventaris
 
 | Method | Path | Akses | Requirement |
