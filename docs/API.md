@@ -60,6 +60,10 @@ Penerapan MVP: pembatas disimpan di memori proses (`lib/api/rate-limit.ts`). Itu
 | POST | `/users/me/wallet` | login | AUTH-07 |
 | DELETE | `/users/me/wallet/{id}` | login | AUTH-07 |
 
+`GET /users/me` → `200 { "data": { "id": "…", "email": "…", "displayName": "…", "role": "VOLUNTEER", "isPublicName": true, "status": "ACTIVE" } }`.
+
+`PATCH /users/me` body: `{ "displayName"?: "2–60 karakter", "isPublicName"?: true|false }` — hanya field profil non-sensitif; field lain (`role`, `status`, `email`) → `422 VALIDATION_ERROR`. Minimal satu field wajib diisi.
+
 `POST /auth/register`
 ```json
 { "email": "relawan@aksibareng.test", "password": "min 10 karakter", "displayName": "Rani" }
