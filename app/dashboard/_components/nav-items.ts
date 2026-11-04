@@ -28,7 +28,7 @@ const VOLUNTEER_NAV: NavItem[] = [
 const ORGANIZER_NAV: NavItem[] = [
   { href: '/dashboard/organizer', label: 'Ringkasan', ready: true },
   { href: '/dashboard/organizer/events', label: 'Kegiatan', ready: true },
-  { href: '/dashboard/organizer/campaigns', label: 'Kampanye', ready: false },
+  { href: '/dashboard/organizer/campaigns', label: 'Kampanye', ready: true },
   { href: '/dashboard/organizer/organization', label: 'Organisasi', ready: false }
 ]
 

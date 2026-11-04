@@ -41,7 +41,81 @@ export class TransitionReasonRequiredError extends Error {
 // `action` wajib terdaftar di AUDIT_ACTIONS; buildAuditEntry menolak lainnya.
 export const WORKFLOW_TRANSITIONS: Record<string, readonly WorkflowRule[]> = {
   event: [],
-  event_registration: []
+  event_registration: [],
+  distribution_batch: [
+    {
+      from: 'PLANNED',
+      to: 'PREPARED',
+      action: 'distribution.preparation_started'
+    },
+    {
+      from: 'PREPARED',
+      to: 'DISPATCHED',
+      action: 'distribution.dispatched'
+    },
+    {
+      from: 'DISPATCHED',
+      to: 'DELIVERED',
+      action: 'distribution.delivered'
+    },
+    {
+      from: 'DISPATCHED',
+      to: 'PARTIALLY_DELIVERED',
+      action: 'distribution.partially_delivered'
+    },
+    {
+      from: 'DELIVERED',
+      to: 'VERIFIED',
+      action: 'distribution.verified'
+    },
+    {
+      from: 'PARTIALLY_DELIVERED',
+      to: 'VERIFIED',
+      action: 'distribution.verified'
+    },
+    {
+      from: 'DELIVERED',
+      to: 'NEEDS_REVIEW',
+      action: 'distribution.needs_review',
+      requiresReason: true
+    },
+    {
+      from: 'PARTIALLY_DELIVERED',
+      to: 'NEEDS_REVIEW',
+      action: 'distribution.needs_review',
+      requiresReason: true
+    },
+    {
+      from: 'VERIFIED',
+      to: 'CANCELLED',
+      action: 'distribution.cancelled',
+      requiresReason: true
+    },
+    {
+      from: 'PREPARED',
+      to: 'CANCELLED',
+      action: 'distribution.cancelled',
+      requiresReason: true
+    },
+    {
+      from: 'DISPATCHED',
+      to: 'CANCELLED',
+      action: 'distribution.cancelled',
+      requiresReason: true
+    },
+    {
+      from: 'DELIVERED',
+      to: 'CANCELLED',
+      action: 'distribution.cancelled',
+      requiresReason: true
+    },
+    {
+      from: 'PARTIALLY_DELIVERED',
+      to: 'CANCELLED',
+      action: 'distribution.cancelled',
+      requiresReason: true
+    }
+  ]
 }
 
 export type WorkflowRegistry = Record<string, readonly WorkflowRule[]>

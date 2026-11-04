@@ -26,7 +26,14 @@ export const AUDIT_ACTIONS = [
   'contribution.verified',
   'contribution.revoked',
   'task.assignment_created',
-  'task.assignment_removed'
+  'task.assignment_removed',
+  'distribution.preparation_started',
+  'distribution.dispatched',
+  'distribution.delivered',
+  'distribution.partially_delivered',
+  'distribution.verified',
+  'distribution.needs_review',
+  'distribution.cancelled'
 ] as const
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]

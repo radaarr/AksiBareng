@@ -65,8 +65,16 @@ export type Action =
   | 'organization:submit_verification'
   | 'organization:list_admin'
   | 'organization:review'
+  | 'campaign:review'
+  | 'campaign:pause'
+  | 'distribution:verify'
+  | 'distribution:privacy_review'
 
 /** Resource minimal per action; `void` berarti cukup peran saja. */
+export type CampaignResource = { id: string; organizationId: string }
+
+export type DistributionResource = { id: string }
+
 export type ActionResource = {
   'event:create': void
   'event:read': EventResource
@@ -97,6 +105,10 @@ export type ActionResource = {
   'organization:submit_verification': OrganizationResource
   'organization:list_admin': void
   'organization:review': void
+  'campaign:review': void
+  'campaign:pause': CampaignResource
+  'distribution:verify': DistributionResource
+  'distribution:privacy_review': DistributionResource
 }
 
 /** Status kegiatan yang boleh dilihat publik dan menerima pendaftaran (EVT-04, EVT-06). */
@@ -151,7 +163,15 @@ const RULES: { [A in Action]: (actor: AccessActor, resource: ActionResource[A]) 
   'organization:update': (actor, org) => actor.role === 'ADMIN' || org.ownerId === actor.id,
   'organization:submit_verification': (actor, org) => actor.role !== 'ADMIN' && org.ownerId === actor.id,
   'organization:list_admin': (actor) => actor.role === 'ADMIN',
-  'organization:review': (actor) => actor.role === 'ADMIN'
+  'organization:review': (actor) => actor.role === 'ADMIN',
+
+  // Peninjauan kampanye dan penangguhan hanya admin (PRD §9.1); bukan peran organizer.
+  'campaign:review': (actor) => actor.role === 'ADMIN',
+  'campaign:pause': (actor) => actor.role === 'ADMIN',
+
+  // Verifikasi distribusi dan privasi hanya petugas berwenang — bukan pengaju batch.
+  'distribution:verify': (actor) => actor.role === 'ADMIN',
+  'distribution:privacy_review': (actor) => actor.role === 'ADMIN'
 }
 
 /** Action yang tidak membawa resource: penolakannya selalu `403`, bukan `404`. */
