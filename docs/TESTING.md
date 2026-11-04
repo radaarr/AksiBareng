@@ -31,6 +31,11 @@ Aturan: test integrasi memakai database terpisah (`DATABASE_URL_TEST`) dan migra
 | K-03b | AUTH-04 | `PATCH /users/me` berisi `role`/`status`/`email` | `422 VALIDATION_ERROR`; field diabaikan/tidak tersimpan |
 | K-03c | AUTH-04 | `PATCH /users/me` tanpa sesi | `401 UNAUTHENTICATED` |
 | K-04 | AUTH-05, AUTH-06 | Pengajuan verifikasi → admin approve | `organizations.verification_status=VERIFIED`, role owner `ORGANIZER`, audit log ada |
+| K-04a | AUTH-05 | Membuat organisasi baru | 201; `verificationStatus=UNVERIFIED`; role tetap `VOLUNTEER`; slug unik; `audit_logs` terisi |
+| K-04b | AUTH-05 | Akun yang sudah punya organisasi membuat lagi | `409 INVALID_STATE_TRANSITION`; tidak ada organisasi kedua |
+| K-04c | AUTH-05 | Mengajukan verifikasi dua kali saat masih `PENDING` | Yang kedua `409 INVALID_STATE_TRANSITION` |
+| K-04d | AUTH-06 | Admin reject verifikasi | Status pengajuan & organisasi `REJECTED`; role owner tetap `VOLUNTEER`; audit log ada |
+| K-04e | AUTH-06 | Non-admin memanggil review / daftar antrean | `403 FORBIDDEN`; tidak ada perubahan data |
 | K-05 | AUTH-07 | Tautkan wallet dengan tanda tangan valid | `wallet_links.status=VERIFIED` |
 | K-05b | AUTH-07 | Tanda tangan dari akun lain / nonce kedaluwarsa | `422`; tidak ada link baru |
 | K-05c | AUTH-07 | Wallet yang sudah dipakai akun lain | `409` |

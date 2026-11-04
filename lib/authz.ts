@@ -24,6 +24,11 @@ export type RegistrationResource = {
   userId: string
 }
 
+/** Organisasi: hanya kepemilikan yang menentukan (docs/RBAC.md §3.3). */
+export type OrganizationResource = {
+  ownerId: string
+}
+
 export type TaskResource = {
   eventOrganizationId: string
   /** Terisi bila relawan sudah ditempatkan pada posisi ini. */
@@ -55,6 +60,11 @@ export type Action =
   | 'contribution:list'
   | 'contribution:verify'
   | 'contribution:revoke'
+  | 'organization:create'
+  | 'organization:update'
+  | 'organization:submit_verification'
+  | 'organization:list_admin'
+  | 'organization:review'
 
 /** Resource minimal per action; `void` berarti cukup peran saja. */
 export type ActionResource = {
@@ -82,6 +92,11 @@ export type ActionResource = {
   'contribution:list': EventResource
   'contribution:verify': EventResource
   'contribution:revoke': void
+  'organization:create': void
+  'organization:update': OrganizationResource
+  'organization:submit_verification': OrganizationResource
+  'organization:list_admin': void
+  'organization:review': void
 }
 
 /** Status kegiatan yang boleh dilihat publik dan menerima pendaftaran (EVT-04, EVT-06). */
@@ -129,14 +144,24 @@ const RULES: { [A in Action]: (actor: AccessActor, resource: ActionResource[A]) 
   'contribution:read_own': (actor, registration) => registration.userId === actor.id,
   'contribution:list': (actor, event) => ownsOrganization(actor, event.organizationId),
   'contribution:verify': (actor, event) => ownsOrganization(actor, event.organizationId),
-  'contribution:revoke': (actor) => actor.role === 'ADMIN'
+  'contribution:revoke': (actor) => actor.role === 'ADMIN',
+
+  // Satu akun satu organisasi pada MVP (docs/RBAC.md §5) — admin tidak membuat organisasi pribadi.
+  'organization:create': (actor) => actor.role !== 'ADMIN',
+  'organization:update': (actor, org) => actor.role === 'ADMIN' || org.ownerId === actor.id,
+  'organization:submit_verification': (actor, org) => actor.role !== 'ADMIN' && org.ownerId === actor.id,
+  'organization:list_admin': (actor) => actor.role === 'ADMIN',
+  'organization:review': (actor) => actor.role === 'ADMIN'
 }
 
 /** Action yang tidak membawa resource: penolakannya selalu `403`, bukan `404`. */
 const ROLE_ONLY_ACTIONS: ReadonlySet<Action> = new Set<Action>([
   'event:create',
   'event:list_own',
-  'contribution:revoke'
+  'contribution:revoke',
+  'organization:create',
+  'organization:list_admin',
+  'organization:review'
 ])
 
 /** Action pada kegiatan yang keberadaannya sudah publik bila statusnya terbuka. */

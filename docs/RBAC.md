@@ -121,6 +121,11 @@ Implementasi memakai `can(actor, action, resource)`. Nama action di bawah adalah
 | `contribution:list` | `{ organizationId, status }` | pemilik kegiatan |
 | `contribution:verify` | `{ organizationId, status }` | pemilik kegiatan |
 | `contribution:revoke` | — | `ADMIN` |
+| `organization:create` | — | siapa pun yang login kecuali `ADMIN` |
+| `organization:update` | `{ ownerId }` | pemilik organisasi atau `ADMIN` |
+| `organization:submit_verification` | `{ ownerId }` | pemilik organisasi (non-`ADMIN`) |
+| `organization:list_admin` | — | `ADMIN` |
+| `organization:review` | — | `ADMIN` |
 
 Pemakaian di route handler:
 

@@ -125,6 +125,43 @@ describe('can — kontribusi', () => {
   })
 })
 
+describe('can — organisasi', () => {
+  const orgA = { ownerId: 'user-a' }
+
+  test('admin tidak dapat membuat organisasi; lainnya bisa', () => {
+    expect(can(admin, 'organization:create', undefined)).toBe(false)
+    expect(can(volunteer, 'organization:create', undefined)).toBe(true)
+    expect(can(organizerA, 'organization:create', undefined)).toBe(true)
+  })
+
+  test('hanya pemilik atau admin yang dapat mengubah organisasi', () => {
+    expect(can(organizerA, 'organization:update', orgA)).toBe(true)
+    expect(can(admin, 'organization:update', orgA)).toBe(true)
+    expect(can(organizerB, 'organization:update', orgA)).toBe(false)
+    expect(can(volunteer, 'organization:update', orgA)).toBe(false)
+  })
+
+  test('hanya pemilik (non-admin) yang dapat mengajukan verifikasi', () => {
+    expect(can(organizerA, 'organization:submit_verification', orgA)).toBe(true)
+    expect(can(organizerB, 'organization:submit_verification', orgA)).toBe(false)
+    expect(can(admin, 'organization:submit_verification', orgA)).toBe(false)
+  })
+
+  test('tinjauan dan antrean admin hanya untuk admin', () => {
+    expect(can(admin, 'organization:review', undefined)).toBe(true)
+    expect(can(admin, 'organization:list_admin', undefined)).toBe(true)
+    expect(can(organizerA, 'organization:review', undefined)).toBe(false)
+    expect(can(volunteer, 'organization:list_admin', undefined)).toBe(false)
+  })
+
+  test('penolakan organisasi memakai 403 untuk peran dan 404 untuk resource privat', () => {
+    expect(denial(() => assertCan(admin, 'organization:create', undefined)).status).toBe(403)
+    expect(denial(() => assertCan(volunteer, 'organization:review', undefined)).status).toBe(403)
+    expect(denial(() => assertCan(organizerB, 'organization:update', orgA)).status).toBe(404)
+    expect(denial(() => assertCan(organizerB, 'organization:submit_verification', orgA)).status).toBe(404)
+  })
+})
+
 describe('assertCan — pemisahan 403 dan 404', () => {
   test('kegiatan publik milik organisasi lain ditolak 403', () => {
     const error = denial(() => assertCan(organizerB, 'event:cancel', publishedA))
