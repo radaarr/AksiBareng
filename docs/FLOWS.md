@@ -215,6 +215,8 @@ Aturan: `RETRY_REQUIRED` tetap menyimpan `last_error`; `attempts` maksimal 5 lal
 
 ## 5. Checklist implementasi alur
 
+Mesin transisi tunggal ada di `lib/workflow/assert-transition.ts` (`assertTransition`, `WORKFLOW_TRANSITIONS`, deny by default; `action` wajib terdaftar di katalog `AUDIT_ACTIONS` di `lib/audit.ts`). Tabel event & registration diisi oleh pemilik wilayah masing-masing lewat PR kecil.
+
 - [ ] Setiap transisi status punya fungsi tunggal di `lib/workflow/` (bukan logika tersebar di route).
 - [ ] Transisi yang tidak terdaftar mengembalikan `409 INVALID_STATE_TRANSITION`.
 - [ ] Setiap transisi menulis `audit_logs` dengan `before`/`after`.
