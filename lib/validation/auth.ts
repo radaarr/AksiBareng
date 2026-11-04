@@ -27,11 +27,5 @@ export const loginSchema = z.object({
 export type RegisterInput = z.infer<typeof registerSchema>
 export type LoginInput = z.infer<typeof loginSchema>
 
-export type FieldIssue = { field: string; message: string }
-
-export function toFieldIssues(error: z.ZodError): FieldIssue[] {
-  return error.issues.map((issue) => ({
-    field: issue.path.join('.') || 'body',
-    message: issue.message
-  }))
-}
+// `FieldIssue` dan `toFieldIssues` tinggal di lib/validation/common.ts agar
+// semua domain memakai bentuk error yang sama (docs/API.md §8).

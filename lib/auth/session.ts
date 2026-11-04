@@ -1,7 +1,10 @@
 import { redirect } from 'next/navigation'
 import type { UserRole } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { UnauthenticatedError } from './errors'
 import { auth } from './config'
+
+export { UnauthenticatedError }
 
 export type Actor = {
   id: string
@@ -11,12 +14,6 @@ export type Actor = {
   isPublicName: boolean
   /** Organisasi yang dimiliki aktor; null bila belum punya (docs/RBAC.md §5). */
   organizationId: string | null
-}
-
-export class UnauthenticatedError extends Error {
-  constructor() {
-    super('UNAUTHENTICATED')
-  }
 }
 
 // docs/RBAC.md §1: id, role, dan status dibaca dari database tiap request —

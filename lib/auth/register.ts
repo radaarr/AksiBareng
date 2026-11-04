@@ -1,7 +1,8 @@
 import { Prisma, type UserRole } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { hashPassword } from './password'
-import { registerSchema, toFieldIssues, type FieldIssue } from '@/lib/validation/auth'
+import { registerSchema } from '@/lib/validation/auth'
+import { toFieldIssues, type FieldIssue } from '@/lib/validation/common'
 
 export type RegisterResult = { id: string; role: UserRole }
 

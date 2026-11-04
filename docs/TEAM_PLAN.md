@@ -19,11 +19,13 @@ A adalah **integration captain**: hanya dia yang merge ke `main` dan hanya dia y
 | Wilayah | Pemilik | Catatan |
 |---|---|---|
 | `prisma/schema.prisma`, `prisma/migrations/`, `prisma/seed.ts` | A | B/C minta perubahan lewat chat |
-| `lib/db.ts`, `lib/auth/`, `lib/authz.ts`, `lib/workflow/`, `lib/storage/`, `lib/chain/`, `lib/validation/` | A | `lib/workflow/` boleh dibaca semua, diedit A |
+| `lib/db.ts`, `lib/auth/`, `lib/authz.ts`, `lib/workflow/`, `lib/storage/`, `lib/chain/`, `lib/validation/{common,auth}.ts` | A | `lib/workflow/` (mesin) hanya A; tabel transisinya boleh ditambah B/C lewat PR kecil |
+| `lib/validation/{event,registration,task,attendance,contribution}.ts` | B | Wajib memakai `toFieldIssues()` dari `common.ts` |
+| `lib/validation/{campaign,donation,goods,expense,distribution}.ts` | C | Wajib memakai `toFieldIssues()` dari `common.ts` |
 | `contracts/**`, `deployments/**` | A | |
 | `app/api/v1/auth*`, `/users*`, `/organizations*`, `/internal*`, `/admin/organizations*`, `/admin/audit*`, `/admin/transactions*` | A | |
 | `components/ui/**` | B | C memakai, **tidak** menduplikasi |
-| `app/api/v1/events*`, `/tasks*`, `/attendance*`, `/contributions*` | B | |
+| `app/api/v1/events*`, `/tasks*`, `/task-assignments*`, `/registrations*`, `/attendance*`, `/contributions*` | B | Termasuk `GET /users/me/registrations` (proyeksi domain pendaftaran) |
 | `app/dashboard/organizer/events/**` | B | |
 | `app/api/v1/campaigns*`, `/donations*`, `/goods-donations*`, `/inventory*`, `/expenses*`, `/distributions*` | C | Kecuali yang disepakati di §3.5 |
 | `app/(public)/**`, `app/dashboard/admin/campaigns*` | C | |
@@ -31,6 +33,8 @@ A adalah **integration captain**: hanya dia yang merge ke `main` dan hanya dia y
 | `docs/**` | semua | Ikut PR masing-masing; A menjaga konsistensi akhir |
 
 Aturan: perubahan di luar wilayah sendiri **wajib** lewat PR kecil yang direview pemiliknya — bukan commit langsung.
+
+Catatan: `app/api/v1/users/me/route.ts` dan `app/api/v1/users/me/registrations/route.ts` adalah dua file terpisah — yang pertama milik A, yang kedua milik B.
 
 ## 3. Papan tugas
 
@@ -61,7 +65,7 @@ Beban: **S** ≈ setengah hari, **M** ≈ satu hari, **L** ≈ dua hari (untuk s
 | T2.1b | EVT-04, 05 | Halaman publik katalog + detail kegiatan | C | M |
 | T2.2 | EVT-06…08 | Pendaftaran + lock kuota + anti duplikat | B | M |
 | T2.3 | EVT-09, 10 | Riwayat relawan & daftar peserta | B | S |
-| T2.4 | SCH-01…04 | Posisi tugas + kuota + penempatan | B | M |
+| T2.4 | SCH-01…04 | Posisi tugas + kuota + penempatan (SCH-06 hapus penempatan = P1, setelah kuota) | B | M |
 | T2.5 | ATT-01, 02, 04 | Sesi check-in + token HMAC 120 s + nonce | B | M |
 | T2.6 | ATT-03, 05 | Scanner QR di dashboard organizer + fallback kode manual | B | M |
 | T2.7 | ATT-06, 07 | Validasi kontribusi + transisi status | B | S |

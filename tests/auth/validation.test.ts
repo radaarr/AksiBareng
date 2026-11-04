@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { registerSchema, toFieldIssues } from '@/lib/validation/auth'
+import { registerSchema } from '@/lib/validation/auth'
+import { toFieldIssues } from '@/lib/validation/common'
 
 const valid = {
   email: 'relawan@aksibareng.test',
