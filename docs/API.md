@@ -45,6 +45,8 @@ Error: RFC 7807, `Content-Type: application/problem+json` (lihat §8).
 | `POST /attendance-sessions/{id}/scan` | 60 / menit / organizer |
 | `POST /donations/intent` | 20 / jam / user |
 
+Penerapan MVP: pembatas disimpan di memori proses (`lib/api/rate-limit.ts`). Itu cukup untuk satu instance dev/demo; bila platform dijalankan lebih dari satu instance, penyimpanannya wajib diganti dengan penyimpanan bersama sebelum batas ini bisa dipercaya. Login dibatasi di dalam `authorize()` Auth.js (`lib/auth/config.ts`), registrasi di route handler-nya.
+
 ## 2. Autentikasi & profil
 
 | Method | Path | Akses | Requirement |
@@ -257,6 +259,7 @@ Semua error memakai bentuk yang sama:
 | `ORGANIZATION_NOT_VERIFIED` | 403 | Kampanye publik sebelum verifikasi |
 | `NOT_FOUND` | 404 | Resource tidak ada atau tidak boleh dilihat |
 | `ALREADY_REGISTERED` | 409 | Pendaftaran ganda (EVT-07) |
+| `EMAIL_TAKEN` | 409 | Email sudah dipakai akun lain (`POST /auth/register`) |
 | `QUOTA_FULL` | 409 | Kuota kegiatan/posisi penuh (EVT-08, SCH) |
 | `REGISTRATION_CLOSED` | 409 | Di luar periode pendaftaran |
 | `EVENT_NOT_OPEN` | 409 | Event `CANCELLED`/`COMPLETED` |
