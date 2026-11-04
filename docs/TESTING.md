@@ -27,6 +27,9 @@ Aturan: test integrasi memakai database terpisah (`DATABASE_URL_TEST`) dan migra
 | K-02c | AUTH-03, PRD §14.1 | Organizer B mengubah/membatalkan kegiatan organisasi A | `404` untuk draf, `403` untuk kegiatan publik; data tidak berubah |
 | K-02d | AUTH-03 | Relawan memanggil verify kontribusi; organizer memanggil revoke kontribusi | `403`; matriks diuji unit di `tests/auth/authz.test.ts` |
 | K-03 | AUTH-04, AUTH-06 | Organizer A mengakses kampanye organisasi B | `404` (resource privat), bukan `200` |
+| K-03a | AUTH-04 | `PATCH /users/me` ubah nama & mode anonim | 200; `displayName`/`isPublicName` tersimpan; `audit_logs` terisi |
+| K-03b | AUTH-04 | `PATCH /users/me` berisi `role`/`status`/`email` | `422 VALIDATION_ERROR`; field diabaikan/tidak tersimpan |
+| K-03c | AUTH-04 | `PATCH /users/me` tanpa sesi | `401 UNAUTHENTICATED` |
 | K-04 | AUTH-05, AUTH-06 | Pengajuan verifikasi → admin approve | `organizations.verification_status=VERIFIED`, role owner `ORGANIZER`, audit log ada |
 | K-05 | AUTH-07 | Tautkan wallet dengan tanda tangan valid | `wallet_links.status=VERIFIED` |
 | K-05b | AUTH-07 | Tanda tangan dari akun lain / nonce kedaluwarsa | `422`; tidak ada link baru |
