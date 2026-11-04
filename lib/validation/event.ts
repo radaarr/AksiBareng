@@ -53,6 +53,34 @@ export const eventCancelSchema = z.object({
     .max(500, 'Alasan maksimal 500 karakter.')
 })
 
+// Filter katalog publik (EVT-12). `status` sengaja dibatasi ke status publik:
+// permintaan `DRAFT` lewat API publik ditolak 422, bukan diam-diam diabaikan.
+export const eventListQuerySchema = z
+  .object({
+    status: z
+      .enum(['PUBLISHED', 'ONGOING'], {
+        message: 'Status filter hanya boleh PUBLISHED atau ONGOING.'
+      })
+      .optional(),
+    category: z.string().trim().min(1).max(80).optional(),
+    city: z.string().trim().min(2, 'Nama kota minimal 2 karakter.').max(80).optional(),
+    q: z.string().trim().min(2, 'Kata kunci minimal 2 karakter.').max(120).optional(),
+    from: isoDateTime.optional(),
+    to: isoDateTime.optional(),
+    limit: z.coerce
+      .number({ message: 'Batas jumlah harus berupa angka.' })
+      .int({ message: 'Batas jumlah harus bilangan bulat.' })
+      .min(1, 'Batas jumlah minimal 1.')
+      .max(50, 'Batas jumlah maksimal 50.')
+      .default(20),
+    cursor: z.string().trim().max(512).optional()
+  })
+  .refine((data) => !data.from || !data.to || data.to >= data.from, {
+    message: 'Tanggal akhir tidak boleh sebelum tanggal mulai.',
+    path: ['to']
+  })
+
 export type EventCreateInput = z.infer<typeof eventCreateSchema>
 export type EventUpdateInput = z.infer<typeof eventUpdateSchema>
 export type EventCancelInput = z.infer<typeof eventCancelSchema>
+export type EventListQuery = z.infer<typeof eventListQuerySchema>

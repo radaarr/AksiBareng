@@ -135,6 +135,53 @@ Review body: `{ "decision": "APPROVED" | "REJECTED", "note": "wajib, ≥ 3 karak
 | POST | `/contributions/{id}/verify` 🔑 | organizer pemilik | ATT-06, ATT-08 |
 | POST | `/contributions/{id}/revoke` 🔑 | admin | ATT-08 / PRD §9.3 |
 
+`GET /events` — katalog publik, tanpa sesi. `status` hanya menerima `PUBLISHED`/`ONGOING`; nilai lain (termasuk `DRAFT`) dijawab `422`, bukan diabaikan. Filter: `status`, `category` (slug), `city`, `q` (judul), `from`/`to` (tanggal mulai), `limit` 1–50 (default 20), `cursor`. Urutan `starts_at` naik, `id` sebagai pemecah seri; `pagination.nextCursor` diteruskan apa adanya ke permintaan berikutnya.
+```json
+{
+  "data": [
+    {
+      "id": "…",
+      "title": "Bersih Pantai Teluk Penyu",
+      "slug": "bersih-pantai-teluk-penyu",
+      "status": "PUBLISHED",
+      "startsAt": "2026-11-20T01:00:00.000Z",
+      "endsAt": "2026-11-20T05:00:00.000Z",
+      "city": "Cilacap",
+      "locationName": "Pantai Teluk Penyu",
+      "quota": 20,
+      "category": { "name": "Lingkungan", "slug": "lingkungan" },
+      "organization": {
+        "name": "Relawan Cilacap",
+        "slug": "relawan-cilacap",
+        "publicArea": "Cilacap",
+        "logoUrl": null,
+        "verificationStatus": "VERIFIED"
+      }
+    }
+  ],
+  "pagination": { "nextCursor": "eyJ0IjoiMjAyNi0xMS0yMFQwMTowMDowMC4wMDBaIiwiaWQiOiLigKYifQ", "hasMore": true }
+}
+```
+Katalog **tidak** memuat `createdBy`, kontak organizer, maupun data pendaftar. Jumlah peserta hanya muncul di detail sebagai agregat.
+
+`GET /events/{id}` — `{id}` menerima id **atau** slug (halaman katalog C memakai slug). Status yang dapat dibaca publik: `PUBLISHED`, `ONGOING`, `COMPLETED`; `DRAFT` dan `CANCELLED` dijawab `404 NOT_FOUND` yang sama, supaya keberadaan draf tidak bocor (K-07).
+```json
+{
+  "data": {
+    "…": "field yang sama dengan item katalog",
+    "description": "…",
+    "publicAddress": "Area pantai, Cilacap",
+    "registrationOpensAt": "2026-11-10T00:00:00.000Z",
+    "registrationClosesAt": "2026-11-18T23:59:00.000Z",
+    "cancellationDeadline": "2026-11-19T00:00:00.000Z",
+    "registeredCount": 12,
+    "remainingQuota": 8,
+    "tasks": [{ "id": "…", "name": "Registrasi peserta", "description": null, "quota": 3 }]
+  }
+}
+```
+`registeredCount` menghitung status `REGISTERED`, `CHECKED_IN`, `VERIFIED` (pendaftaran aktif) dan tidak pernah menyertakan identitas pendaftar.
+
 `POST /events/{id}/registrations` — satu-satunya jalur pendaftaran.
 ```json
 { "note": "Bisa datang pagi" }

@@ -46,6 +46,7 @@ Aturan: test integrasi memakai database terpisah (`DATABASE_URL_TEST`) dan migra
 | Kode | Requirement | Kasus | Ekspektasi |
 |---|---|---|---|
 | K-07 | EVT-01, EVT-04 | Organizer membuat kegiatan, publish, pengunjung membuka katalog | Kegiatan tampil; draft tidak tampil |
+| K-07a | EVT-04, EVT-05, EVT-12 | Katalog dan detail dibuka tanpa sesi (`GET /events`, `GET /events/{id}`) | Katalog hanya `PUBLISHED`/`ONGOING`; filter `status=DRAFT` → 422; detail draf/batal → 404; unit test `tests/events/query.test.ts` |
 | K-08 | EVT-02 | Ubah kegiatan setelah `starts_at` | `409 INVALID_STATE_TRANSITION` |
 | K-09 | EVT-06, EVT-07 | Daftar dua kali | Pertama 201, kedua `409 ALREADY_REGISTERED`, count tetap 1 |
 | K-10 | EVT-08 | Kuota 20, 50 request paralel | Sukses tepat 20, sisanya `409 QUOTA_FULL`; `count == 20` |
