@@ -82,7 +82,9 @@ Aturan: test integrasi memakai database terpisah (`DATABASE_URL_TEST`) dan migra
 | K-30 | DON-03, DON-05 | Transaksi revert / dibatalkan | `FAILED`; total **tidak** naik |
 | K-31 | DON-04 | Kirim `txHash` milik donasi lain | `409`; tidak ada donasi baru tercatat |
 | K-32 | DON-06, DON-07 | Riwayat donatur & ringkasan publik | Milik sendiri lengkap; publik hanya agregat tanpa alamat wallet |
-| K-33 | PRD §7.6 | Teks/status donasi | Semua nominal memuat label simulasi/testnet |
+| K-33 | PRD §7.6 | Teks/status donasi | Semua nominal memuat label simulasi/testnet; diuji unit di `tests/chain/format.test.ts` |
+| K-33a | DON-02 | Nominal intent di bawah 0,001 ETH testnet atau bukan angka bulat wei | Ditolak sebelum menyimpan donasi; pesan Bahasa Indonesia; diuji unit di `tests/validation/donation.test.ts` |
+| K-33b | DON-06 | Halaman donasi memantau status milik sendiri | `GET /users/me/donations` hanya mengembalikan donasi sesi; polling berhenti saat `CONFIRMED`/`FAILED`, tidak memblokir layar, dan kartu transaksi memakai status hasil polling (dipetakan di `tests/api/donations.test.ts`) |
 | K-34 | GDS-03, GDS-04 | Terima 18 dari 20 barang diajukan | Stok bertambah 18 (bukan 20); audit log ada |
 | K-35 | GDS-06 | Donasi barang belum diterima | Tidak dihitung sebagai stok |
 

@@ -206,6 +206,8 @@ Organizer belum terverifikasi → `403 ORGANIZATION_NOT_VERIFIED`. Review admin 
 } }
 ```
 
+`GET /users/me/donations` mengembalikan donasi milik sesi (`{ "data": [...] }`). Parameter opsional `?donationId={id}` mempersempit respons ke satu donasi; donasi milik pengguna lain tidak pernah ikut.
+
 `GET /campaigns/{id}/donations/summary` mengembalikan agregat tanpa identitas donatur selain nama tampilan yang diizinkan:
 ```json
 { "data": { "totalConfirmedWei": "250000000000000000", "donorCount": 12, "lastConfirmedAt": "…" } }
