@@ -83,8 +83,10 @@ Aturan: test integrasi memakai database terpisah (`DATABASE_URL_TEST`) dan migra
 | K-31 | DON-04 | Kirim `txHash` milik donasi lain | `409`; tidak ada donasi baru tercatat |
 | K-32 | DON-06, DON-07 | Riwayat donatur & ringkasan publik | Milik sendiri lengkap; publik hanya agregat tanpa alamat wallet |
 | K-33 | PRD §7.6 | Teks/status donasi | Semua nominal memuat label simulasi/testnet |
-| K-34 | GDS-03, GDS-04 | Terima 18 dari 20 barang diajukan | Stok bertambah 18 (bukan 20); audit log ada |
-| K-35 | GDS-06 | Donasi barang belum diterima | Tidak dihitung sebagai stok |
+| K-37 | CAM-02 | Transisi status kampanye tidak sah (mis. PENDING_REVIEW → CLOSED, DRAFT → ACTIVE, ACTIVE → COMPLETED) | `409 INVALID_STATE_TRANSITION`; penolakan oleh `lib/workflow/assert-transition` |
+| K-38 | EXP-05 | Pengeluaran melebihi dana terkonfirmasi | `409 EXPENSE_EXCEEDS_FUNDS` dengan selisih (library `lib/expenses/budget.ts`) |
+| K-39 | EXP-04 | Unggah bukti | `sha256` dihitung server, `chain_hash` tersimpan, URL publik tidak dapat diakses tanpa sesi |
+| K-39b | EXP-05 | Cek minimum 1 wei | `validateMinExpense` tolak 0/negatif |
 
 ### 2.5 Pengeluaran & distribusi
 
@@ -92,8 +94,9 @@ Aturan: test integrasi memakai database terpisah (`DATABASE_URL_TEST`) dan migra
 |---|---|---|---|
 | K-36 | EXP-02, EXP-03 | Ajukan → setujui → tandai dibayar | `PROPOSED → APPROVED → PAID`, audit log tiap transisi |
 | K-37 | EXP-03 | `PROPOSED → PAID` langsung | `409 INVALID_STATE_TRANSITION` |
-| K-38 | EXP-05 | Pengeluaran melebihi dana terkonfirmasi | `409 EXPENSE_EXCEEDS_FUNDS` dengan selisih |
+| K-38 | EXP-05 | Pengeluaran melebihi dana terkonfirmasi | `409 EXPENSE_EXCEEDS_FUNDS` dengan selisih (library `lib/expenses/budget.ts`) |
 | K-39 | EXP-04 | Unggah bukti | `sha256` dihitung server, `chain_hash` tersimpan, URL publik tidak dapat diakses tanpa sesi |
+| K-39b | EXP-05 | Cek minimum 1 wei | `validateMinExpense` tolak 0/negatif |
 | K-40 | DST-03 | Alokasi melebihi stok | `409 INSUFFICIENT_STOCK`; stok tidak berubah |
 | K-41 | DST-05 | Relawan memanggil verify distribusi | `403`; admin/verifikator berhasil |
 | K-42 | DST-06 | Kirim 200 dari 300 yang disiapkan | `quantity_received=200`, batch `PARTIALLY_DELIVERED` |
@@ -142,6 +145,9 @@ Aturan: test integrasi memakai database terpisah (`DATABASE_URL_TEST`) dan migra
 ## 4. Data uji
 
 - Seed fiktif: 2 organisasi, 3 kegiatan (draft/published/ongoing), 3 kampanye (draft/active/closed), 20 relawan sintetis `relawan01..20@aksibareng.test`.
+- Fixture AksiPeduli: kampanye `100-meals-for-cilacap` (ACTIVE), `Beach Cleanup Day` (DRAFT), organisasi `AksiPeduli` & `Bakti Bersama`, donasi minimal 3 (satu CONFIRMED, satu PENDING, satu FAILED), barang 2 jenis, expense `PROPOSED` total < dana.
+- Semua data fiktif, nama organisasi ringkas, tidak ada alamat wallet pribadi, email hanya `@aksibareng.test`.
+- Seed idempoten: `prisma/seed.ts` menggunakan upsert untuk Campaign, Organization, Donation; `lib/fixtures/seed-aksi-peduli.ts` bisa dijalankan berulang kali tanpa error.
 - Wallet: alamat testnet baru untuk demo; jangan pakai wallet pribadi.
 - Database uji terpisah dari database demo.
 

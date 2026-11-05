@@ -36,12 +36,31 @@ export class TransitionReasonRequiredError extends Error {
   }
 }
 
-// Tabel transisi. Sengaja kosong di PR ini — baris event & registration
-// menyusul dari pemilik wilayah B lewat PR kecil (docs/TEAM_PLAN.md §2).
-// `action` wajib terdaftar di AUDIT_ACTIONS; buildAuditEntry menolak lainnya.
+// Tabel transisi. Baris event & registration menyusul dari pemilik wilayah B
+// lewat PR kecil (docs/TEAM_PLAN.md §2). `action` wajib terdaftar di
+// AUDIT_ACTIONS; buildAuditEntry menolak lainnya.
 export const WORKFLOW_TRANSITIONS: Record<string, readonly WorkflowRule[]> = {
   event: [],
-  event_registration: []
+  event_registration: [],
+  // docs/FLOWS.md §3.2. Transisi di luar daftar ini ditolak, termasuk lompatan
+  // seperti PENDING_REVIEW → CLOSED atau ACTIVE → COMPLETED.
+  campaign: [
+    { from: 'DRAFT', to: 'PENDING_REVIEW', action: 'campaign.submitted' },
+    { from: 'PENDING_REVIEW', to: 'ACTIVE', action: 'campaign.approved' },
+    {
+      from: 'PENDING_REVIEW',
+      to: 'REJECTED',
+      action: 'campaign.rejected',
+      requiresReason: true
+    },
+    { from: 'PENDING_REVIEW', to: 'DRAFT', action: 'campaign.withdrawn', requiresReason: true },
+    { from: 'ACTIVE', to: 'PAUSED', action: 'campaign.paused', requiresReason: true },
+    { from: 'PAUSED', to: 'ACTIVE', action: 'campaign.resumed' },
+    { from: 'ACTIVE', to: 'CLOSED', action: 'campaign.closed', requiresReason: true },
+    { from: 'CLOSED', to: 'COMPLETED', action: 'campaign.completed' },
+    { from: 'ACTIVE', to: 'CANCELLED', action: 'campaign.cancelled', requiresReason: true },
+    { from: 'CLOSED', to: 'CANCELLED', action: 'campaign.cancelled', requiresReason: true }
+  ]
 }
 
 export type WorkflowRegistry = Record<string, readonly WorkflowRule[]>
